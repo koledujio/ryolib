@@ -1,0 +1,5 @@
+build
+build-darwin
+build-win32
+.DS_Store
+.cache
