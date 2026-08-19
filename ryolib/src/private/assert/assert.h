@@ -69,7 +69,7 @@
         } \
     } while(0)
 
-#elifdef RYO_SAFETY
+#elif defined(RYO_SAFETY)
 
 #define RYO_ENSURE_VOID(expr, msg) \
     do { \

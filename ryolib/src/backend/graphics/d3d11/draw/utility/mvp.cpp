@@ -11,19 +11,19 @@ namespace ryo {
                 float halfHeight = camera.orthographicSize * 0.5f;
                 float halfWidth = halfHeight * aspect;
 
-                projection = matrix4_orthographic(-halfWidth, halfWidth, -halfHeight, halfHeight, camera.nearPlane, camera.farPlane);
+                projection = Matrix4::orthographic(-halfWidth, halfWidth, -halfHeight, halfHeight, camera.nearPlane, camera.farPlane);
                 break;
             }
 
             case CAMERA_PROJECTION_TYPE_PERSPECTIVE: {
-                projection = matrix4_perspective(camera.fovY, aspect, camera.nearPlane, camera.farPlane);
+                projection = Matrix4::perspective(camera.fovY, aspect, camera.nearPlane, camera.farPlane);
                 break;
             }
         }
 
-        Matrix4 view = matrix4_look_at(camera.position, camera.target, camera.up);
+        Matrix4 view = Matrix4::look_at(camera.position, camera.target, camera.up);
 
-        return matrix4_multiply(projection, view);
+        return projection * view;
     }
 
     Matrix4 _draw_get_mvp(const _InternalRenderer& renderer, const DrawSettings* settings, const Matrix4& matrix, int targetWidth, int targetHeight) {
@@ -33,7 +33,7 @@ namespace ryo {
 
         Matrix4 cameraMatrix = _draw_compute_camera_vp(*settings->camera, aspect);
 
-        return matrix4_multiply(cameraMatrix, matrix);
+        return cameraMatrix * matrix;
     }
 
     bool _draw_bind_mvp(_InternalRenderer& renderer, const Matrix4& mvp) {

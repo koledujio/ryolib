@@ -26,7 +26,7 @@ namespace ryo {
             _draw_get_target_size(ir, width, height);
             float fWidth = (float)width;
             float fHeight = (float)height;
-            [encoder setVertexBytes:matrix4_multiply(_compute_camera_vp(*settings->camera, fWidth / fHeight), matrix).m length:sizeof(Matrix4) atIndex:1];
+            [encoder setVertexBytes:(_compute_camera_vp(*settings->camera, fWidth / fHeight) * matrix).m length:sizeof(Matrix4) atIndex:1];
         } else {
             [encoder setVertexBytes:matrix.m length:sizeof(Matrix4) atIndex:1];
         }

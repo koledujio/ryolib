@@ -1,27 +1,36 @@
 #pragma once
 
 namespace ryo {
+    struct Vector3 {
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+
+        Vector3 operator+(const Vector3& b) const;
+        Vector3 operator-(const Vector3& b) const;
+        Vector3 operator*(float scalar) const;
+        Vector3 operator/(float scalar) const;
+        Vector3 normalized() const;
+        Vector3 cross(const Vector3& b) const;
+        float dot(const Vector3& b) const;
+        float length() const;
+        float length_squared() const;
+    };
+
     struct Matrix4 {
         float m[16];
+
+        Matrix4();
+
+        static Matrix4 perspective(float fovY, float aspect, float nearPlane, float farPlane);
+        static Matrix4 orthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane);
+        static Matrix4 look_at(const Vector3& eye, const Vector3& target, const Vector3& up);
+        static Matrix4 translation(float x, float y, float z);
+        static Matrix4 scaling(float x, float y, float z);
+        static Matrix4 rotation(float x, float y, float z);
+
+        Matrix4 operator*(const Matrix4& b) const;
+        Matrix4 inverse() const;
+        Matrix4 transpose() const;
     };
-
-    struct Vector3 {
-        float x, y, z;
-    };
-
-    Matrix4 matrix4_identity();
-    Matrix4 matrix4_perspective(float fovY, float aspect, float nearPlane, float farPlane);
-    Matrix4 matrix4_orthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane);
-    Matrix4 matrix4_look_at(const Vector3& eye, const Vector3& target, const Vector3& up);
-    Matrix4 matrix4_multiply(const Matrix4& a, const Matrix4& b);
-    Matrix4 matrix4_translation(float x, float y, float z);
-    Matrix4 matrix4_scaling(float x, float y, float z);
-    Matrix4 matrix4_rotation(float x, float y, float z);
-
-    Vector3 vector3_add(const Vector3& a, const Vector3& b);
-    Vector3 vector3_subtract(const Vector3& a, const Vector3& b);
-    Vector3 vector3_cross(const Vector3& a, const Vector3& b);
-    float vector3_dot(const Vector3& a, const Vector3& b);
-    float vector3_length(const Vector3& v);
-    Vector3 vector3_normalize(const Vector3& v);
 }

@@ -310,7 +310,7 @@ int main() {
 
             ryo::draw_pass_begin(renderer, &tetoTarget, &tetoClear);
 
-            ryo::Matrix4 tetoScale = ryo::matrix4_scaling((float)tetoWidth, (float)tetoHeight, 1.0f);
+            ryo::Matrix4 tetoScale = ryo::Matrix4::scaling((float)tetoWidth, (float)tetoHeight, 1.0f);
             ryo::draw_rect_texture(renderer, tetoTexture, ryo::SAMPLER_TYPE_LINEAR, w, tetoScale, &tetoTargetSettings);
 
             ryo::draw_pass_end(renderer);
@@ -318,35 +318,35 @@ int main() {
             tetoDrawn = true;
         }
 
-        ryo::Matrix4 rot = ryo::matrix4_rotation(rotationAngle, rotationAngle * 0.7f, 0.0f);
-        ryo::Matrix4 scale = ryo::matrix4_scaling(1.0f, 1.0f, 1.0f);
-        ryo::Matrix4 model = ryo::matrix4_multiply(rot, scale);
+        ryo::Matrix4 rot = ryo::Matrix4::rotation(rotationAngle, rotationAngle * 0.7f, 0.0f);
+        ryo::Matrix4 scale = ryo::Matrix4::scaling(1.0f, 1.0f, 1.0f);
+        ryo::Matrix4 model = rot * scale;
 
-        ryo::Matrix4 model2 = ryo::matrix4_translation(-0.5f, 0.5f, 0.0f);
+        ryo::Matrix4 model2 = ryo::Matrix4::translation(-0.5f, 0.5f, 0.0f);
 
-        ryo::Matrix4 scale3 = ryo::matrix4_scaling(5.0f, 5.0f, 1.0f);
-        ryo::Matrix4 translation4 = ryo::matrix4_translation(0.0f, 0.0f, -1.0f);
-        ryo::Matrix4 model3 = ryo::matrix4_multiply(scale3, translation4);
+        ryo::Matrix4 scale3 = ryo::Matrix4::scaling(5.0f, 5.0f, 1.0f);
+        ryo::Matrix4 translation4 = ryo::Matrix4::translation(0.0f, 0.0f, -1.0f);
+        ryo::Matrix4 model3 = scale3 * translation4;
 
-        ryo::Matrix4 model4 = ryo::matrix4_translation(-0.5f, -0.5f, 0.0f);
+        ryo::Matrix4 model4 = ryo::Matrix4::translation(-0.5f, -0.5f, 0.0f);
 
-        ryo::Matrix4 textScale = ryo::matrix4_scaling((float)textWidth, (float)textHeight, 1.0f);
+        ryo::Matrix4 textScale = ryo::Matrix4::scaling((float)textWidth, (float)textHeight, 1.0f);
         float xPos = -640.0f + (textWidth / 2.0f);
         float yPos = 360.0f - (textHeight / 2.0f);
-        ryo::Matrix4 textTranslate = ryo::matrix4_translation(xPos, yPos, 0.0f);
-        ryo::Matrix4 textModel = ryo::matrix4_multiply(textTranslate, textScale);
+        ryo::Matrix4 textTranslate = ryo::Matrix4::translation(xPos, yPos, 0.0f);
+        ryo::Matrix4 textModel = textTranslate * textScale;
 
-        ryo::Matrix4 mikuScale = ryo::matrix4_scaling((float)mikuWidth, (float)mikuHeight, 1.0f);
+        ryo::Matrix4 mikuScale = ryo::Matrix4::scaling((float)mikuWidth, (float)mikuHeight, 1.0f);
         float mikuXPos = -640.0f + (mikuWidth / 2.0f);
         float mikuYPos = -360.0f + (mikuHeight / 2.0f) + hatsuneFloatAmount;
-        ryo::Matrix4 mikuTranslate = ryo::matrix4_translation(mikuXPos, mikuYPos, 0.0f);
-        ryo::Matrix4 mikuModel = ryo::matrix4_multiply(mikuTranslate, mikuScale);
+        ryo::Matrix4 mikuTranslate = ryo::Matrix4::translation(mikuXPos, mikuYPos, 0.0f);
+        ryo::Matrix4 mikuModel = mikuTranslate * mikuScale;
 
-        ryo::Matrix4 tetoScale = ryo::matrix4_scaling((float)endTetoWidth, (float)endTetoHeight, 1.0f);
+        ryo::Matrix4 tetoScale = ryo::Matrix4::scaling((float)endTetoWidth, (float)endTetoHeight, 1.0f);
         float tetoXPos = 640.0f - (endTetoWidth / 2.0f);
         float tetoYPos = 360.0f - (endTetoHeight / 2.0f);
-        ryo::Matrix4 tetoTranslate = ryo::matrix4_translation(tetoXPos, tetoYPos, 0.0f);
-        ryo::Matrix4 tetoModel = ryo::matrix4_multiply(tetoTranslate, tetoScale);
+        ryo::Matrix4 tetoTranslate = ryo::Matrix4::translation(tetoXPos, tetoYPos, 0.0f);
+        ryo::Matrix4 tetoModel = tetoTranslate * tetoScale;
         
         ryo::Color white = {1.0f, 1.0f, 1.0f, 1.0f};
         ryo::Color red = {1.0, 0.0f, 0.0f, 1.0f};

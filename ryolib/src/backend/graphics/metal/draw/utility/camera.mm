@@ -7,15 +7,15 @@ namespace ryo {
             case CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC: {
                 float halfH = camera.orthographicSize * 0.5f;
                 float halfW = halfH * aspect;
-                proj = matrix4_orthographic(-halfW, halfW, -halfH, halfH, camera.nearPlane, camera.farPlane);
+                proj = Matrix4::orthographic(-halfW, halfW, -halfH, halfH, camera.nearPlane, camera.farPlane);
                 break;
             }
             case CAMERA_PROJECTION_TYPE_PERSPECTIVE: {
-                proj = matrix4_perspective(camera.fovY, aspect, camera.nearPlane, camera.farPlane);
+                proj = Matrix4::perspective(camera.fovY, aspect, camera.nearPlane, camera.farPlane);
                 break;
             }
         }
-        Matrix4 view = matrix4_look_at(camera.position, camera.target, camera.up);
-        return matrix4_multiply(proj, view);
+        Matrix4 view = Matrix4::look_at(camera.position, camera.target, camera.up);
+        return proj * view;
     }
 }
