@@ -83,8 +83,8 @@ int main() {
     fontConfig.path = "assets/lato-400-normal.ttf";
     fontConfig.fontSize = 32.0f;
 
-    ryo::Font font = ryo::font_create(fontConfig);
-    if (!ryo::font_is_valid(font)) {
+    ryo::Font font(fontConfig);
+    if (!font.valid()) {
         printf("[APP] Invalid font!\n");
         return 0;
     }
@@ -93,19 +93,19 @@ int main() {
     jpFontConfig.path = "assets/notosansjp-regular.ttf";
     jpFontConfig.fontSize = 27.0f;
 
-    ryo::Font jpFont = ryo::font_create(jpFontConfig);
-    if (!ryo::font_is_valid(jpFont)) {
+    ryo::Font jpFont(jpFontConfig);
+    if (!jpFont.valid()) {
         printf("[APP] Invalid japanese font!\n");
         return 0;
     }
 
-    ryo::font_add_fallback(font, jpFont);
+    font.fallback_add(jpFont);
 
     ryo::Color textColor = {0.0f, 0.0f, 0.0f, 1.0f};
     void* textPixels;
     int textWidth;
     int textHeight;
-    if (!ryo::text_render_line(font, "Hello, World! こんにちは！", textColor, textWidth, textHeight, textPixels)) {
+    if (!font.pixels_render_line("Hello, World! こんにちは！", textColor, textWidth, textHeight, textPixels)) {
         printf("[APP] Text rendering failed!\n");
         return 0;
     }
@@ -116,7 +116,7 @@ int main() {
         return 0;
     }
 
-    ryo::text_free_pixels(textPixels);
+    font.pixels_free(textPixels);
 
     ryo::Camera camera3d = {};
     camera3d.projectionType = ryo::CAMERA_PROJECTION_TYPE_PERSPECTIVE;
@@ -377,8 +377,6 @@ int main() {
 
     ryo::pipeline_destroy(texBlend);
     ryo::texture_destroy(textTexture);
-    ryo::font_destroy(font);
-    ryo::font_destroy(jpFont);
     ryo::buffer_destroy(vbo);
     ryo::buffer_destroy(ibo);
     ryo::texture_destroy(myTexture);
