@@ -31,14 +31,14 @@ int main() {
         return 0;
     }
 
-    ryo::Window window = ryo::window_create("GFX Test", 1280, 720);
-    if (!ryo::window_is_valid(window)) {
+    ryo::Window window("GFX Test", 1280, 720);
+    if (!window.valid()) {
         printf("[APP] Failed to create gfx window!\n");
         return 0;
     }
 
     ryo::RendererConfig config = {};
-    config.nativeWindowHandle = ryo::window_get_nwh(window);
+    config.nativeWindowHandle = window.nwh_get();
     config.width = 1280;
     config.height = 720;
 
@@ -192,8 +192,8 @@ int main() {
 
     bool shouldClose = false;
     bool gamepadConnected = false;
-    ryo::Gamepad gamepad; 
-    ryo::GamepadId gamepadId;
+    ryo::Gamepad* gamepad = nullptr;
+    int gamepadId;
     bool buttonPressed = false;
     bool floatplayPlaying = false;
     float hatsuneFloatAmount = 0.0f;
@@ -203,101 +203,103 @@ int main() {
 
     ryo::Event event;
     while (!shouldClose) {
-        ryo::window_poll_event(window, event);
-        switch (event.type) {
-            case ryo::EVENT_QUIT:
-                shouldClose = true;
-                break;
-            
-            case ryo::EVENT_PAD_ADDED:
-                if (gamepadConnected) continue;
-                gamepadId = event.data.pad.id;
-                printf("Gamepad with id %d detected!\n", gamepadId);
-                gamepad = ryo::gamepad_open(gamepadId);
-                if (ryo::gamepad_is_valid(gamepad)) {
-                    gamepadConnected = true;
-                    printf("Gamepad with id %d connected!\n", gamepadId);
-                    printf("%s Connected!\n", ryo::gamepad_get_name(gamepad));
-                }
-                break;
-            
-            case ryo::EVENT_PAD_REMOVED:
-                if (!gamepadConnected) continue;
-                if (event.data.pad.id != gamepadId) continue;
-                if (!ryo::gamepad_is_valid(gamepad)) continue;
-                printf("Gamepad with id %d removed!\n", gamepadId);
-                ryo::gamepad_close(gamepad);
-                gamepadConnected = false;
-                break;
-            
-            case ryo::EVENT_PAD_BUTTON_DOWN:
-                if (!gamepadConnected) continue;
-                if (event.data.pad.id != gamepadId) continue;
-                if (!ryo::gamepad_is_valid(gamepad)) continue;
-                if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
-                    printf("Down button pressed\n");
-                    buttonPressed = true;
-                }
-                if (event.data.pad.button == ryo::PAD_BUTTON_RIGHT) {
-                    printf("MIKUDAYO\n");
-                    ryo::sound_play(mikudayo);
-                    hatsuneFloatAmount = 250.0f;
-                }
-                if (event.data.pad.button == ryo::PAD_BUTTON_UP) {
-                    if (floatplayPlaying) {
-                        ryo::sound_pause(floatplay);
-                    } else {
-                        ryo::sound_play(floatplay);
+        while (window.event_poll(event)) {
+            switch (event.type) {
+                case ryo::EVENT_QUIT:
+                    shouldClose = true;
+                    break;
+                
+                case ryo::EVENT_PAD_ADDED:
+                    if (gamepadConnected) continue;
+                    gamepadId = event.data.pad.id;
+                    printf("Gamepad with id %d detected!\n", gamepadId);
+                    gamepad = new ryo::Gamepad(gamepadId);
+                    if (gamepad->valid()) {
+                        gamepadConnected = true;
+                        printf("Gamepad with id %d connected!\n", gamepadId);
+                        printf("%s Connected!\n", gamepad->name_get());
                     }
-                    floatplayPlaying = !floatplayPlaying;
-                }
-                break;
-            
-            case ryo::EVENT_PAD_BUTTON_UP:
-                if (!gamepadConnected) continue;
-                if (event.data.pad.id != gamepadId) continue;
-                if (!ryo::gamepad_is_valid(gamepad)) continue;
-                if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
-                    printf("PAD_PHYS_RPAD_DOWN unpressed\n");
-                    buttonPressed = false;
-                }
-                break;
-            
-            case ryo::EVENT_PAD_AXIS_MOTION:
-                if (!gamepadConnected) continue;
-                if (event.data.pad.id != gamepadId) continue;
-                if (!ryo::gamepad_is_valid(gamepad)) continue;
-                if (event.data.pad.axis == ryo::PAD_AXIS_TRIGGER_RIGHT) {
-                    if (event.data.pad.axisValue > 0.5f && !rtrigger) {
-                        ryo::gamepad_set_rumble(gamepad, 65535, 0, 500);
-                        rtrigger = true;
-                    } else if (event.data.pad.axisValue <= 0.5f && rtrigger) {
-                        rtrigger = false;
+                    break;
+                
+                case ryo::EVENT_PAD_REMOVED:
+                    if (!gamepadConnected) continue;
+                    if (event.data.pad.id != gamepadId) continue;
+                    if (!gamepad->valid()) continue;
+                    printf("Gamepad with id %d removed!\n", gamepadId);
+                    delete gamepad;
+                    gamepad = nullptr;
+                    gamepadConnected = false;
+                    break;
+                
+                case ryo::EVENT_PAD_BUTTON_DOWN:
+                    if (!gamepadConnected) continue;
+                    if (event.data.pad.id != gamepadId) continue;
+                    if (!gamepad->valid()) continue;
+                    if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
+                        printf("Down button pressed\n");
+                        buttonPressed = true;
                     }
-                } else if (event.data.pad.axis == ryo::PAD_AXIS_TRIGGER_LEFT) {
-                    if (event.data.pad.axisValue > 0.5f && !ltrigger) {
-                        ryo::gamepad_set_rumble(gamepad, 0, 65535, 500);
-                        ltrigger = true;
-                    } else if (event.data.pad.axisValue <= 0.5f && ltrigger) {
-                        ltrigger = false;
+                    if (event.data.pad.button == ryo::PAD_BUTTON_RIGHT) {
+                        printf("MIKUDAYO\n");
+                        ryo::sound_play(mikudayo);
+                        hatsuneFloatAmount = 250.0f;
                     }
-                }
-                break;
-            
-            case ryo::EVENT_KEY_DOWN:
-                if (event.data.key.code == ryo::KEY_SPACE && !event.data.key.isRepeat) {
-                    printf("SPACE pressed!\n");
-                }
-                break;
-            
-            case ryo::EVENT_KEY_UP:
-                if (event.data.key.code == ryo::KEY_SPACE && !event.data.key.isRepeat) {
-                    printf("SPACE unpressed!\n");
-                }
-                break;
+                    if (event.data.pad.button == ryo::PAD_BUTTON_UP) {
+                        if (floatplayPlaying) {
+                            ryo::sound_pause(floatplay);
+                        } else {
+                            ryo::sound_play(floatplay);
+                        }
+                        floatplayPlaying = !floatplayPlaying;
+                    }
+                    break;
+                
+                case ryo::EVENT_PAD_BUTTON_UP:
+                    if (!gamepadConnected) continue;
+                    if (event.data.pad.id != gamepadId) continue;
+                    if (!gamepad->valid()) continue;
+                    if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
+                        printf("PAD_PHYS_RPAD_DOWN unpressed\n");
+                        buttonPressed = false;
+                    }
+                    break;
+                
+                case ryo::EVENT_PAD_AXIS_MOTION:
+                    if (!gamepadConnected) continue;
+                    if (event.data.pad.id != gamepadId) continue;
+                    if (!gamepad->valid()) continue;
+                    if (event.data.pad.axis == ryo::PAD_AXIS_TRIGGER_RIGHT) {
+                        if (event.data.pad.axisValue > 0.5f && !rtrigger) {
+                            gamepad->rumble_set(65535, 0, 500);
+                            rtrigger = true;
+                        } else if (event.data.pad.axisValue <= 0.5f && rtrigger) {
+                            rtrigger = false;
+                        }
+                    } else if (event.data.pad.axis == ryo::PAD_AXIS_TRIGGER_LEFT) {
+                        if (event.data.pad.axisValue > 0.5f && !ltrigger) {
+                            gamepad->rumble_set(0, 65535, 500);
+                            ltrigger = true;
+                        } else if (event.data.pad.axisValue <= 0.5f && ltrigger) {
+                            ltrigger = false;
+                        }
+                    }
+                    break;
+                
+                case ryo::EVENT_KEY_DOWN:
+                    if (event.data.key.code == ryo::KEY_SPACE && !event.data.key.isRepeat) {
+                        printf("SPACE pressed!\n");
+                    }
+                    break;
+                
+                case ryo::EVENT_KEY_UP:
+                    if (event.data.key.code == ryo::KEY_SPACE && !event.data.key.isRepeat) {
+                        printf("SPACE unpressed!\n");
+                    }
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
 
         rotationAngle += 0.015f;
@@ -383,10 +385,11 @@ int main() {
     ryo::texture_destroy(tetoTexture);
     ryo::render_target_destroy(tetoTarget);
     ryo::renderer_destroy(renderer);
-    ryo::window_destroy(window);
     ryo::sound_destroy(floatplay);
     ryo::sound_destroy(mikudayo);
     ryo::audio_engine_destroy(audioEngine);
+    if (gamepad)
+        delete gamepad;
 
     return 0;
 }

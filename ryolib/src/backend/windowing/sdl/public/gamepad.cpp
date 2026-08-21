@@ -5,92 +5,77 @@
 #include "SDL3/SDL_sensor.h"
 
 namespace ryo {
-    ResourcePool<_InternalGamepad, MAX_GAMEPADS> _gamepad_pool;
-
-    Gamepad gamepad_open(GamepadId id) {
-        if (_gamepad_pool.active_count >= MAX_GAMEPADS) {
-            error_set("Maximum number of gamepads reached");
-            return {};
-        }
-
+    Gamepad::Gamepad(int id) {
         SDL_Gamepad* sdlGamepad = SDL_OpenGamepad(id);
         if (!sdlGamepad) {
             error_set("Failed to open SDL gamepad: %s", SDL_GetError());
-            return {};
+            return;
         }
 
-        _InternalGamepad internalGamepad = {};
-        internalGamepad.sdlGamepad = sdlGamepad;
-
-        GamepadId* newId = new GamepadId(id);
-
-        internalGamepad.id = newId;
-        
         SDL_GamepadType sdlType = SDL_GetGamepadType(sdlGamepad);
-        internalGamepad.type = _gamepad_get_ryo_type(sdlType);
 
-        INDEX idx = _gamepad_pool.allocate_index();
-        GENID gen = _gamepad_pool.generations[idx];
+        InternalGamepad* internalGamepad = new InternalGamepad;
+        internalGamepad->sdlGamepad = sdlGamepad;
 
-        _gamepad_pool.items[idx] = internalGamepad;
-
-        return Gamepad::pack(idx, gen);
+        internal = internalGamepad;
+        type = _gamepad_get_ryo_type(sdlType);
+        this->id = id;
     }
 
-    bool gamepad_is_valid(Gamepad gamepad) {
-        INDEX idx = gamepad.index();
-        GENID gen = gamepad.gen();
+    Gamepad::~Gamepad() {
+        if (!internal)
+            return;
 
-        if (idx >= MAX_GAMEPADS || idx == 0)
-            return false;
-        
-        if (!_gamepad_pool.is_valid(idx, gamepad.gen()))
-            return false;
+        if (internal->sdlGamepad)
+            SDL_CloseGamepad(internal->sdlGamepad);
 
-        return _gamepad_pool.items[idx].sdlGamepad != nullptr && _gamepad_pool.items[idx].id != nullptr;
+        delete internal;
     }
 
-    void gamepad_close(Gamepad gamepad) {
-        RYO_ENSURE_VOID(gamepad_is_valid(gamepad), "Invalid gamepad handle");
-
-        INDEX idx = gamepad.index();
-
-        SDL_CloseGamepad(_gamepad_pool.items[idx].sdlGamepad);
-
-        delete _gamepad_pool.items[idx].id;
-
-        _gamepad_pool.free_index(idx);
+    Gamepad::Gamepad(Gamepad&& other) : internal(other.internal), id(other.id), type(other.type) {
+        other.internal = nullptr;
+        other.id = 0;
+        other.type = PAD_TYPE_UNKNOWN;
     }
 
-    GamepadId gamepad_get_id(Gamepad gamepad) {
-        RYO_ENSURE(gamepad_is_valid(gamepad), 0, "Invalid gamepad handle");
+    Gamepad& Gamepad::operator=(Gamepad&& other) {
+        if (this == &other)
+            return *this;
 
-        return *_gamepad_pool.items[gamepad.index()].id;
+        if (internal) {
+            if (internal->sdlGamepad)
+                SDL_CloseGamepad(internal->sdlGamepad);
+
+            delete internal;
+        }
+
+        internal = other.internal;
+        id = other.id;
+        type = other.type;
+
+        other.internal = nullptr;
+        other.id = 0;
+        other.type = PAD_TYPE_UNKNOWN;
+
+        return *this;
     }
 
-    GamepadType gamepad_get_type(Gamepad gamepad) {
-        RYO_ENSURE(gamepad_is_valid(gamepad), PAD_TYPE_UNKNOWN, "Invalid gamepad handle");
-
-        return _gamepad_pool.items[gamepad.index()].type;
+    bool Gamepad::valid() const {
+        return internal != nullptr && internal->sdlGamepad != nullptr;
     }
 
-    const char* gamepad_get_name(Gamepad gamepad) {
-        RYO_ENSURE(gamepad_is_valid(gamepad), "Unknown Gamepad", "Invalid gamepad handle");
+    const char* Gamepad::name_get() const {
+        RYO_ENSURE(valid(), "Unknown Gamepad", "Invalid gamepad");
 
-        SDL_Gamepad* sdlGamepad = _gamepad_pool.items[gamepad.index()].sdlGamepad;
-        RYO_ASSERT(sdlGamepad != nullptr, "Unknown Gamepad", "SDL_Gamepad pointer is null");
-        const char* name = SDL_GetGamepadName(sdlGamepad);
+        const char* name = SDL_GetGamepadName(internal->sdlGamepad);
 
         return name ? name : "Unknown Gamepad";
     }
 
-    bool gamepad_set_rumble(Gamepad gamepad, uint16_t lowFreq, uint16_t highFreq, uint32_t durationMs) {
-        RYO_ENSURE(gamepad_is_valid(gamepad), false, "Invalid gamepad handle");
+    bool Gamepad::rumble_set(uint16_t lowFreq, uint16_t highFreq, uint32_t durationMs) const {
+        RYO_ENSURE(valid(), false, "Invalid gamepad");
 
-        SDL_Gamepad* sdlGamepad = _gamepad_pool.items[gamepad.index()].sdlGamepad;
-        RYO_ASSERT(sdlGamepad != nullptr, false, "SDL_Gamepad pointer is null");
-
-        if (!SDL_RumbleGamepad(sdlGamepad, lowFreq, highFreq, durationMs)) {
+        if (!SDL_RumbleGamepad(internal->sdlGamepad, lowFreq, highFreq, durationMs)) {
             error_set("Failed to set gamepad rumble: %s", SDL_GetError());
             return false;
         }
@@ -98,13 +83,10 @@ namespace ryo {
         return true;
     }
     
-    bool gamepad_set_trigger_rumble(Gamepad gamepad, uint16_t leftTrigger, uint16_t rightTrigger, uint32_t durationMs) {
-        RYO_ENSURE(gamepad_is_valid(gamepad), false, "Invalid gamepad handle");
+    bool Gamepad::rumble_set_trigger(uint16_t leftTrigger, uint16_t rightTrigger, uint32_t durationMs) const {
+        RYO_ENSURE(valid(), false, "Invalid gamepad");
 
-        SDL_Gamepad* sdlGamepad = _gamepad_pool.items[gamepad.index()].sdlGamepad;
-        RYO_ASSERT(sdlGamepad != nullptr, false, "SDL_Gamepad pointer is null");
-
-        if (!SDL_RumbleGamepadTriggers(sdlGamepad, leftTrigger, rightTrigger, durationMs)) {
+        if (!SDL_RumbleGamepadTriggers(internal->sdlGamepad, leftTrigger, rightTrigger, durationMs)) {
             error_set("Failed to set gamepad trigger rumble: %s", SDL_GetError());
             return false;
         }

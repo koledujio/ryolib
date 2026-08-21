@@ -3,24 +3,11 @@
 #include "templates.h"
 
 namespace ryo {
-    using Window = Handle<struct WindowTag>;
-    using GamepadId = int;
-    using Gamepad = Handle<struct GamepadTag>;
+    struct InternalWindow;
+    struct InternalGamepad;
 
-    enum EventType {
-        EVENT_NONE,
-        EVENT_QUIT,
-
-        EVENT_PAD_ADDED,
-        EVENT_PAD_REMOVED,
-        EVENT_PAD_BUTTON_DOWN,
-        EVENT_PAD_BUTTON_UP,
-        EVENT_PAD_AXIS_MOTION,
-
-        EVENT_KEY_DOWN,
-        EVENT_KEY_UP
-    };
-
+    struct Event;
+    
     enum GamepadType {
         PAD_TYPE_UNKNOWN = 0,
         PAD_TYPE_XBOX_360,
@@ -34,6 +21,61 @@ namespace ryo {
         PAD_TYPE_SWITCH_JOYCON_PAIR,
         PAD_TYPE_GAMECUBE,
         PAD_TYPE_STEAM
+    };
+
+    struct Window {
+        InternalWindow* internal = nullptr;
+
+        Window(const char* title, unsigned int width, unsigned int height);
+        ~Window();
+
+        Window(const Window&) = delete;
+        Window& operator=(const Window&) = delete;
+
+        Window(Window&&);
+        Window& operator=(Window&&);
+
+        bool valid() const;
+
+        bool event_poll(Event& event);
+
+        void* nwh_get();
+    };
+
+    struct Gamepad {
+        InternalGamepad* internal = nullptr;
+        int id = 0;
+        GamepadType type = PAD_TYPE_UNKNOWN;
+        
+        Gamepad(int id);
+        ~Gamepad();
+
+        Gamepad(const Gamepad&) = delete;
+        Gamepad& operator=(const Gamepad&) = delete;
+
+        Gamepad(Gamepad&&);
+        Gamepad& operator=(Gamepad&&);
+
+        bool valid() const;
+
+        const char* name_get() const;
+
+        bool rumble_set(uint16_t lowFreq, uint16_t highFreq, uint32_t durationMs) const;
+        bool rumble_set_trigger(uint16_t leftTrigger, uint16_t rightTrigger, uint32_t durationMs) const;
+    };
+
+    enum EventType {
+        EVENT_NONE,
+        EVENT_QUIT,
+
+        EVENT_PAD_ADDED,
+        EVENT_PAD_REMOVED,
+        EVENT_PAD_BUTTON_DOWN,
+        EVENT_PAD_BUTTON_UP,
+        EVENT_PAD_AXIS_MOTION,
+
+        EVENT_KEY_DOWN,
+        EVENT_KEY_UP
     };
 
     enum GamepadButton {
@@ -93,8 +135,7 @@ namespace ryo {
 
         union {
             struct {
-                GamepadId id; // EVENT_PAD_ADDED, EVENT_PAD_REMOVED
-                GamepadType type; // EVENT_PAD_ADDED, EVENT_PAD_REMOVED
+                int id; // EVENT_PAD_ADDED, EVENT_PAD_REMOVED
 
                 GamepadButton button; // EVENT_PAD_BUTTON_DOWN, EVENT_PAD_BUTTON_UP
 
@@ -108,22 +149,4 @@ namespace ryo {
             } key;
         } data;
     };
-
-    Window window_create(const char* title, unsigned int width, unsigned int height);
-    void window_destroy(Window window);
-    bool window_is_valid(Window window);
-
-    bool window_poll_event(Window window, Event& event);
-    void* window_get_nwh(Window window);
-
-    Gamepad gamepad_open(GamepadId id);
-    bool gamepad_is_valid(Gamepad gamepad);
-    void gamepad_close(Gamepad gamepad);
-
-    GamepadId gamepad_get_id(Gamepad gamepad);
-    GamepadType gamepad_get_type(Gamepad gamepad);
-    const char* gamepad_get_name(Gamepad gamepad);
-
-    bool gamepad_set_rumble(Gamepad gamepad, uint16_t lowFreq, uint16_t highFreq, uint32_t durationMs);
-    bool gamepad_set_trigger_rumble(Gamepad gamepad, uint16_t leftTrigger, uint16_t rightTrigger, uint32_t durationMs);
 }
