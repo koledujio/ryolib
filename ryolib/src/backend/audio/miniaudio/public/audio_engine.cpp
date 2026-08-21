@@ -1,51 +1,67 @@
 #include "../private.h"
 
 namespace ryo {
-    ResourcePool<ma_engine, MAX_ENGINES> _engine_pool;
-
-    AudioEngine audio_engine_create() {
-        if (_engine_pool.active_count >= MAX_ENGINES) {
-            error_set("Maximum number of audio engines reached");
-            return {};
-        }
-
-        INDEX idx = _engine_pool.allocate_index();
-        GENID gen = _engine_pool.generations[idx];
-
-        ma_result result = ma_engine_init(NULL, &_engine_pool.items[idx]);
+    AudioEngine::AudioEngine() {
+        ma_engine* engine = new ma_engine;
+        ma_result result = ma_engine_init(NULL, engine);
 
         if (result != MA_SUCCESS) {
-            ma_engine_uninit(&_engine_pool.items[idx]);
+            ma_engine_uninit(engine);
+            delete engine;
             error_set("Failed to create miniaudio audio engine: %s", ma_result_description(result));
-            _engine_pool.free_index(idx);
-            return {};
+            return;
         }
 
-        return AudioEngine::pack(idx, gen);
+        InternalAudioEngine* intern = new InternalAudioEngine;
+        intern->engine = engine;
+
+        internal = intern;
     }
 
-    void audio_engine_destroy(AudioEngine engine) {
-        RYO_ENSURE_VOID(audio_engine_is_valid(engine), "Invalid audio engine handle");
+    AudioEngine::~AudioEngine() {
+        if (internal)
+            return;
 
-        ma_engine_uninit(&_engine_pool.items[engine.index()]);
-        _engine_pool.free_index(engine.index());
+        if (internal->engine) {
+            ma_engine_uninit(internal->engine);
+            delete internal->engine;
+        }
+
+        delete internal;
     }
 
-    bool audio_engine_is_valid(AudioEngine engine) {
-        INDEX idx = engine.index();
-        GENID gen = engine.gen();
-
-        if (idx >= MAX_ENGINES) 
-            return false;
-
-        return _engine_pool.is_valid(idx, gen);
+    AudioEngine::AudioEngine(AudioEngine&& other) : internal(other.internal) {
+        other.internal = nullptr;
     }
 
-    bool audio_engine_set_master_volume(AudioEngine engine, float volume) {
-        RYO_ENSURE(audio_engine_is_valid(engine), false, "Invalid audio engine handle");
+    AudioEngine& AudioEngine::operator=(AudioEngine&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            if (internal->engine) {
+                ma_engine_uninit(internal->engine);
+                delete internal->engine;
+            }
+
+            delete internal;
+        }
+
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
+    }
+
+    bool AudioEngine::valid() const {
+        return internal != nullptr && internal->engine != nullptr;
+    }
+
+    bool AudioEngine::master_volume_set(float volume) {
+        RYO_ENSURE(valid(), false, "Invalid audio engine");
         RYO_ENSURE(volume > 0.0f, false, "Volume value is less than 0.0f");
 
-        ma_result result = ma_engine_set_volume(&_engine_pool.items[engine.index()], volume);
+        ma_result result = ma_engine_set_volume(internal->engine, volume);
 
         if (result != MA_SUCCESS) {
             error_set("Failed to set audio engine master volume: %s", ma_result_description(result));

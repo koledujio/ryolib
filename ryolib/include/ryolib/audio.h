@@ -3,8 +3,55 @@
 #include "templates.h"
 
 namespace ryo {
-    using AudioEngine = Handle<struct AudioEngineTag>;
-    using Sound = Handle<struct SoundTag>;
+    struct InternalAudioEngine;
+    struct InternalSound;
+
+    struct SoundDesc;
+
+    struct AudioEngine {
+        InternalAudioEngine* internal = nullptr;
+
+        AudioEngine();
+        ~AudioEngine();
+
+        AudioEngine(const AudioEngine&) = delete;
+        AudioEngine& operator=(const AudioEngine&) = delete;
+
+        AudioEngine(AudioEngine&&);
+        AudioEngine& operator=(AudioEngine&&);
+
+        bool valid() const;
+
+        bool master_volume_set(float volume);
+    };
+
+    struct Sound {
+        InternalSound* internal = nullptr;
+
+        Sound(const AudioEngine& engine, SoundDesc soundDesc); // load
+        Sound(const AudioEngine& engine, const Sound& source); // clone(reuse existing memory)
+        ~Sound();
+
+        Sound(const Sound&) = delete;
+        Sound& operator=(const Sound&) = delete;
+
+        Sound(Sound&&);
+        Sound& operator=(Sound&&);
+
+        bool valid() const;
+
+        bool play();
+        bool pause();
+        bool stop();
+
+        void volume_set(float volume);
+        void looping_set(bool looping);
+
+        uint32_t duration_miliseconds_get() const;
+        float duration_seconds_get() const;
+        uint32_t current_miliseconds_get() const;
+        float current_seconds_get() const;
+    };
 
     enum SoundLoadType {
         SOUND_LOAD_TYPE_DECODE,
@@ -21,26 +68,4 @@ namespace ryo {
         SoundLoadType loadType = SOUND_LOAD_TYPE_DECODE;
         SoundConfig config;
     };
-
-    AudioEngine audio_engine_create();
-    void audio_engine_destroy(AudioEngine engine);
-    bool audio_engine_is_valid(AudioEngine engine);
-    bool audio_engine_set_master_volume(AudioEngine engine, float volume);
-
-    Sound sound_load(AudioEngine engine, SoundDesc soundDesc);
-    Sound sound_clone(AudioEngine engine, Sound source);
-    void sound_destroy(Sound sound);
-    bool sound_is_valid(Sound sound);
-
-    bool sound_play(Sound sound);
-    bool sound_pause(Sound sound);
-    bool sound_stop(Sound sound);
-
-    void sound_set_volume(Sound sound, float volume);
-    void sound_set_looping(Sound sound, bool looping);
-
-    uint32_t sound_get_duration_miliseconds(Sound sound);
-    uint32_t sound_get_current_miliseconds(Sound sound);
-    float sound_get_duration_seconds(Sound sound);
-    float sound_get_current_seconds(Sound sound);
 }

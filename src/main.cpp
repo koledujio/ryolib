@@ -4,8 +4,8 @@
 #include <cstdio>
 
 int main() {
-    ryo::AudioEngine audioEngine = ryo::audio_engine_create();
-    if (!ryo::audio_engine_is_valid(audioEngine)) {
+    ryo::AudioEngine audioEngine;
+    if (!audioEngine.valid()) {
         printf("[APP] Failed to initialize audio engine!\n");
         return 0;
     }
@@ -13,8 +13,8 @@ int main() {
     ryo::SoundDesc mikudayoDesc = {};
     mikudayoDesc.path = "assets/mikudayo.mp3";
 
-    ryo::Sound mikudayo = ryo::sound_load(audioEngine, mikudayoDesc);
-    if (!ryo::sound_is_valid(mikudayo)) {
+    ryo::Sound mikudayo(audioEngine, mikudayoDesc);
+    if (!mikudayo.valid()) {
         printf("[APP] Failed to load sound!\n");
         return 0;
     }
@@ -25,8 +25,8 @@ int main() {
     floatplayDesc.config.volume = 0.5f;
     floatplayDesc.config.looping = true;
 
-    ryo::Sound floatplay = ryo::sound_load(audioEngine, floatplayDesc);
-    if (!ryo::sound_is_valid(floatplay)) {
+    ryo::Sound floatplay(audioEngine, floatplayDesc);
+    if (!floatplay.valid()) {
         printf("[APP] Failed to load sound!\n");
         return 0;
     }
@@ -241,14 +241,14 @@ int main() {
                     }
                     if (event.data.pad.button == ryo::PAD_BUTTON_RIGHT) {
                         printf("MIKUDAYO\n");
-                        ryo::sound_play(mikudayo);
+                        mikudayo.play();
                         hatsuneFloatAmount = 250.0f;
                     }
                     if (event.data.pad.button == ryo::PAD_BUTTON_UP) {
                         if (floatplayPlaying) {
-                            ryo::sound_pause(floatplay);
+                            floatplay.pause();
                         } else {
-                            ryo::sound_play(floatplay);
+                            floatplay.play();
                         }
                         floatplayPlaying = !floatplayPlaying;
                     }
@@ -385,9 +385,6 @@ int main() {
     ryo::texture_destroy(tetoTexture);
     ryo::render_target_destroy(tetoTarget);
     ryo::renderer_destroy(renderer);
-    ryo::sound_destroy(floatplay);
-    ryo::sound_destroy(mikudayo);
-    ryo::audio_engine_destroy(audioEngine);
     if (gamepad)
         delete gamepad;
 
