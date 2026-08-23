@@ -3,48 +3,45 @@
 #include <chrono>
 
 namespace ryo {
-    void frame_begin(Renderer renderer) {
+    void Renderer::frame_begin() {
         // optional safety flags like ir.inFrame can be added here
         // in d3d11, immediate commands execute directly so frame_begin is not needed as much
 
-        RYO_ENSURE_VOID(renderer_is_valid(renderer), "Invalid renderer handle");
-
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
+        RYO_ENSURE_VOID(valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(!internal->inFrame, "Renderer is in a frame already");
 
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-        if (ir.lastTime.time_since_epoch().count() != 0) {
-            std::chrono::duration<float> elapsed = now - ir.lastTime;
-            ir.deltaTime = elapsed.count();
+        if (internal->lastTime.time_since_epoch().count() != 0) {
+            std::chrono::duration<float> elapsed = now - internal->lastTime;
+            internal->deltaTime = elapsed.count();
         } else {
-            ir.deltaTime = 0.0f;
+            internal->deltaTime = 0.0f;
         }
 
-        ir.lastTime = now;
+        internal->lastTime = now;
+
+        internal->inFrame = true;
     }
 
-    bool frame_end(Renderer renderer) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
+    bool Renderer::frame_end() {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+        RYO_ENSURE(internal->inFrame, false, "Renderer is not in a frame");
+        RYO_ASSERT(internal->swapChain, false, "Renderer has no swapchain");
 
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-
-        RYO_ASSERT(ir.swapChain, false, "Renderer has no swapchain");
-
-        HRESULT hr = ir.swapChain->Present(1, 0);
+        HRESULT hr = internal->swapChain->Present(1, 0);
         if (FAILED(hr)) {
             error_set("Swapchain present failed HRESULT: 0x%08X", static_cast<unsigned int>(hr));
             return false;
         }
 
+        internal->inFrame = false;
+
         return true;
     }
 
-    float frame_get_delta_time(Renderer renderer) {
-        RYO_ENSURE(renderer_is_valid(renderer), 0.0f, "Invalid renderer handle");
+    float Renderer::frame_time_get() const {
+        RYO_ENSURE(valid(), 0.0f, "Invalid renderer");
 
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-        return ir.deltaTime;
+        return internal->deltaTime;
     }
 }

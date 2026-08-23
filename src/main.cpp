@@ -42,9 +42,10 @@ int main() {
     config.width = 1280;
     config.height = 720;
 
-    ryo::Renderer renderer = ryo::renderer_create(config);
-    if (!ryo::renderer_is_valid(renderer)) {
-        printf("WARNING: Renderer invalid. Renderer's INDEX: %d.\n", renderer.index());
+    ryo::Renderer renderer(config);
+    if (!renderer.valid()) {
+        printf("[APP] Failed to create renderer!\n");
+        return 0;
     }
 
     uint8_t checkerboardPixels[16] = {
@@ -53,7 +54,7 @@ int main() {
         0, 0, 0, 255,
         255, 0, 255, 255
     };  
-    ryo::Texture myTexture = ryo::texture_create(renderer, checkerboardPixels, 2, 2);
+    ryo::Texture myTexture(renderer, checkerboardPixels, 2, 2);
 
     ryo::PositionUVVertex cubeVertices[] = {
         { {-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f} },
@@ -76,8 +77,8 @@ int main() {
         4, 5, 1,  1, 0, 4
     };
 
-    ryo::Buffer vbo = ryo::buffer_create(renderer, cubeVertices, sizeof(ryo::PositionUVVertex) * 8, ryo::BUFFER_TYPE_VERTEX);
-    ryo::Buffer ibo = ryo::buffer_create(renderer, cubeIndices, sizeof(uint32_t) * 36, ryo::BUFFER_TYPE_INDEX);
+    ryo::Buffer vbo(renderer, cubeVertices, sizeof(ryo::PositionUVVertex) * 8, ryo::BUFFER_TYPE_VERTEX);
+    ryo::Buffer ibo(renderer, cubeIndices, sizeof(uint32_t) * 36, ryo::BUFFER_TYPE_INDEX);
 
     ryo::FontConfig fontConfig;
     fontConfig.path = "assets/lato-400-normal.ttf";
@@ -110,8 +111,8 @@ int main() {
         return 0;
     }
 
-    ryo::Texture textTexture = ryo::texture_create(renderer, textPixels, textWidth, textHeight);
-    if (!ryo::texture_is_valid(textTexture)) {
+    ryo::Texture textTexture(renderer, textPixels, textWidth, textHeight);
+    if (!textTexture.valid()) {
         printf("[APP] Text texture creation failed!\n");
         return 0;
     }
@@ -145,28 +146,28 @@ int main() {
     texBlendDesc.blendMode = ryo::BLEND_MODE_ALPHA;
     texBlendDesc.vertexLayout = ryo::VERTEX_LAYOUT_POSITION_UV;
 
-    ryo::Pipeline texBlend = ryo::pipeline_create(renderer, texBlendDesc);
-    if (!ryo::pipeline_is_valid(texBlend)) {
+    ryo::Pipeline texBlend(renderer, texBlendDesc);
+    if (!texBlend.valid()) {
         printf("[GFX] Failed to create texture blended pipeline!\n");
         return 0;
     }
 
     int mikuWidth, mikuHeight;
-    ryo::Texture hatsuneMikuTexture = ryo::image_load_texture(renderer, "assets/hatsune miku.png", mikuWidth, mikuHeight);
-    if (!ryo::texture_is_valid(hatsuneMikuTexture)) {
+    ryo::Texture* hatsuneMikuTexture = ryo::image_load_texture(renderer, "assets/hatsune miku.png", mikuWidth, mikuHeight);
+    if (hatsuneMikuTexture == nullptr || !hatsuneMikuTexture->valid()) {
         return 0;
     }
 
     int tetoHeight, tetoWidth;
-    ryo::Texture tetoTexture = ryo::image_load_texture(renderer, "assets/kasane teto.png", tetoWidth, tetoHeight);
-    if (!ryo::texture_is_valid(tetoTexture)) {
+    ryo::Texture* tetoTexture = ryo::image_load_texture(renderer, "assets/kasane teto.png", tetoWidth, tetoHeight);
+    if (tetoTexture == nullptr || !tetoTexture->valid()) {
         return 0;
     }
     int endTetoHeight = 720; // height of the window
     int endTetoWidth = ((float)tetoWidth / (float)tetoHeight) * 720; // height * aspect ratio of teto
 
-    ryo::RenderTarget tetoTarget = ryo::render_target_create(renderer, tetoWidth, tetoHeight);
-    if (!ryo::render_target_is_valid(tetoTarget)) {
+    ryo::RenderTarget tetoTarget(renderer, tetoWidth, tetoHeight);
+    if (!tetoTarget.valid()) {
         return 0;
     }
 
@@ -304,18 +305,18 @@ int main() {
 
         rotationAngle += 0.015f;
 
-        ryo::frame_begin(renderer);
+        renderer.frame_begin();
 
         if (!tetoDrawn) {
             ryo::Color w = {1.0f, 1.0f, 1.0f, 1.0f};
             ryo::Color tetoClear = {0.5f, 0.5f, 1.0f, 1.0f};
 
-            ryo::draw_pass_begin(renderer, &tetoTarget, &tetoClear);
+            renderer.draw_pass_begin(&tetoTarget, &tetoClear);
 
             ryo::Matrix4 tetoScale = ryo::Matrix4::scaling((float)tetoWidth, (float)tetoHeight, 1.0f);
-            ryo::draw_rect_texture(renderer, tetoTexture, ryo::SAMPLER_TYPE_LINEAR, w, tetoScale, &tetoTargetSettings);
+            renderer.draw_rect_texture(*tetoTexture, ryo::SAMPLER_TYPE_LINEAR, w, tetoScale, &tetoTargetSettings);
 
-            ryo::draw_pass_end(renderer);
+            renderer.draw_pass_end();
 
             tetoDrawn = true;
         }
@@ -354,39 +355,37 @@ int main() {
         ryo::Color red = {1.0, 0.0f, 0.0f, 1.0f};
         ryo::Color blue = {0.0, 0.0f, 1.0f, 1.0f};
 
-        ryo::draw_pass_begin(renderer, nullptr, &white);
+        renderer.draw_pass_begin(nullptr, &white);
 
-        ryo::draw_rect_color(renderer, red, model2, &settings);
-        ryo::draw_mesh_texture(renderer, vbo, ibo, 36, myTexture,buttonPressed ? ryo::SAMPLER_TYPE_LINEAR : ryo::SAMPLER_TYPE_NEAREST, white, model, &settings);
-        ryo::draw_rect_color(renderer, blue, model3, &settings);
-        ryo::draw_rect_texture(renderer, myTexture, ryo::SAMPLER_TYPE_NEAREST, white, model4, &settings);
+        renderer.draw_rect_color(red, model2, &settings);
+        renderer.draw_mesh_texture(vbo, ibo, 36, myTexture,buttonPressed ? ryo::SAMPLER_TYPE_LINEAR : ryo::SAMPLER_TYPE_NEAREST, white, model, &settings);
+        renderer.draw_rect_color(blue, model3, &settings);
+        renderer.draw_rect_texture(myTexture, ryo::SAMPLER_TYPE_NEAREST, white, model4, &settings);
 
-        ryo::draw_rect_texture(renderer, textTexture, ryo::SAMPLER_TYPE_LINEAR, white, textModel, &settings2d);
-        ryo::draw_rect_texture(renderer, hatsuneMikuTexture, ryo::SAMPLER_TYPE_LINEAR, white, mikuModel, &settings2d);
-        ryo::draw_rect_texture(renderer, ryo::render_target_get_color_texture(tetoTarget), ryo::SAMPLER_TYPE_LINEAR, white, tetoModel, &settings2d);
+        renderer.draw_rect_texture(textTexture, ryo::SAMPLER_TYPE_LINEAR, white, textModel, &settings2d);
+        renderer.draw_rect_texture(*hatsuneMikuTexture, ryo::SAMPLER_TYPE_LINEAR, white, mikuModel, &settings2d);
+        renderer.draw_rect_texture(*tetoTarget.texture_color_get(), ryo::SAMPLER_TYPE_LINEAR, white, tetoModel, &settings2d);
 
-        ryo::draw_pass_end(renderer);
+        renderer.draw_pass_end();
 
-        ryo::frame_end(renderer);
+        renderer.frame_end();
 
         if (hatsuneFloatAmount > 0.0f) {
-            hatsuneFloatAmount -= ryo::frame_get_delta_time(renderer) * 500;
+            hatsuneFloatAmount -= renderer.frame_time_get() * 500;
             if (hatsuneFloatAmount < 0.0f) {
                 hatsuneFloatAmount = 0.0f;
             }
         }
     }
 
-    ryo::pipeline_destroy(texBlend);
-    ryo::texture_destroy(textTexture);
-    ryo::buffer_destroy(vbo);
-    ryo::buffer_destroy(ibo);
-    ryo::texture_destroy(myTexture);
-    ryo::texture_destroy(tetoTexture);
-    ryo::render_target_destroy(tetoTarget);
-    ryo::renderer_destroy(renderer);
     if (gamepad)
         delete gamepad;
+
+    if (hatsuneMikuTexture)
+        delete hatsuneMikuTexture;
+
+    if (tetoTexture)
+        delete tetoTexture;
 
     return 0;
 }

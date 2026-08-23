@@ -7,11 +7,125 @@
 #include "templates.h"
 
 namespace ryo {
-    using Renderer = Handle<struct RendererTag>;
-    using RenderTarget = Handle<struct RenderTargetTag>;
-    using Texture = Handle<struct TextureTag>;
-    using Buffer = Handle<struct BufferTag>;
-    using Pipeline = Handle<struct PipelineTag>;
+    struct InternalRenderer;
+    struct InternalRenderTarget;
+    struct InternalTexture;
+    struct InternalBuffer;
+    struct InternalPipeline;
+
+    struct RendererConfig;
+    struct RenderTarget;
+    struct Color;
+    struct DrawSettings;
+    struct Texture;
+    struct Buffer;
+    struct PipelineDesc;
+
+    enum SamplerType {
+        SAMPLER_TYPE_NEAREST,
+        SAMPLER_TYPE_LINEAR,
+        SAMPLER_TYPE_MIN_NEAREST_MAG_LINEAR,
+        SAMPLER_TYPE_MIN_LINEAR_MAG_NEAREST
+    };
+
+    enum BufferType {
+        BUFFER_TYPE_VERTEX,
+        BUFFER_TYPE_INDEX
+    };
+
+    struct Renderer {
+        InternalRenderer* internal = nullptr;
+
+        Renderer(const RendererConfig& config); // new device
+        Renderer(const RendererConfig& config, const Renderer& renderer); // share device and resources
+        ~Renderer();
+
+        Renderer(const Renderer&) = delete;
+        Renderer& operator=(const Renderer&) = delete;
+
+        Renderer(Renderer&&);
+        Renderer& operator=(Renderer&&);
+
+        bool valid() const;
+
+        bool resize(unsigned int width, unsigned int height);
+
+        void frame_begin();
+        bool frame_end();
+
+        float frame_time_get() const; // time between last two frame_begin calls
+
+        void draw_pass_begin(RenderTarget* renderTarget, const Color* clearColor);
+        void draw_pass_end();
+
+        bool draw_rect_color(const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr) const;
+        bool draw_rect_texture(const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr) const;
+        bool draw_mesh_texture(const Buffer& vertexBuffer, const Buffer& indexBuffer, uint32_t indexCount, const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr) const;
+    };
+
+    struct RenderTarget {
+        InternalRenderTarget* internal = nullptr;
+
+        RenderTarget(const Renderer& renderer, unsigned int width, unsigned int height);
+        ~RenderTarget();
+
+        RenderTarget(const RenderTarget*) = delete;
+        RenderTarget& operator=(const RenderTarget&) = delete;
+
+        RenderTarget(RenderTarget&&);
+        RenderTarget& operator=(RenderTarget&&);
+
+        bool valid() const;
+
+        const Texture* texture_color_get() const;
+        const Texture* texture_depth_get() const; 
+    };
+
+    struct Texture {
+        InternalTexture* internal = nullptr;
+
+        Texture(const Renderer& renderer, const void* pixels, unsigned int width, unsigned int height);
+        Texture(InternalTexture* internal);
+        ~Texture();
+
+        Texture(const Texture&) = delete;
+        Texture& operator=(const Texture&) = delete;
+
+        Texture(Texture&&);
+        Texture& operator=(Texture&&);
+
+        bool valid() const;
+    };
+
+    struct Buffer {
+        InternalBuffer* internal = nullptr;
+
+        Buffer(const Renderer& renderer, const void* data, size_t size, BufferType type);
+        ~Buffer();
+
+        Buffer(const Buffer&) = delete;
+        Buffer& operator=(const Buffer&) = delete;
+
+        Buffer(Buffer&&);
+        Buffer& operator=(Buffer&&);
+
+        bool valid() const;
+    };
+
+    struct Pipeline {
+        InternalPipeline* internal = nullptr;
+
+        Pipeline(const Renderer& renderer, const PipelineDesc& desc);
+        ~Pipeline();
+
+        Pipeline(const Pipeline&) = delete;
+        Pipeline& operator=(const Pipeline&) = delete;
+
+        Pipeline(Pipeline&&);
+        Pipeline& operator=(Pipeline&&);
+
+        bool valid() const;
+    };
 
     struct RendererConfig {
         void* nativeWindowHandle;
@@ -29,18 +143,6 @@ namespace ryo {
     struct PositionUVVertex {
         float position[3];
         float uv[2];
-    };
-
-    enum SamplerType {
-        SAMPLER_TYPE_NEAREST,
-        SAMPLER_TYPE_LINEAR,
-        SAMPLER_TYPE_MIN_NEAREST_MAG_LINEAR,
-        SAMPLER_TYPE_MIN_LINEAR_MAG_NEAREST
-    };
-
-    enum BufferType {
-        BUFFER_TYPE_VERTEX,
-        BUFFER_TYPE_INDEX
     };
 
     enum CameraProjectionType {
@@ -105,38 +207,4 @@ namespace ryo {
         const Camera* camera = nullptr;
         const Pipeline* pipelineOverride = nullptr;
     };
-
-    Renderer renderer_create(const RendererConfig& config);
-    Renderer renderer_create_share_resources(const RendererConfig& config, Renderer renderer);
-    void renderer_destroy(Renderer renderer);
-    bool renderer_is_valid(Renderer renderer);
-    bool renderer_resize(Renderer renderer, int width, int height);
-
-    void frame_begin(Renderer renderer);
-    bool frame_end(Renderer renderer);
-    float frame_get_delta_time(Renderer renderer);
-
-    void draw_pass_begin(Renderer renderer, RenderTarget* target, const Color* clearColor);
-    void draw_pass_end(Renderer renderer);
-    bool draw_rect_color(Renderer renderer, const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr);
-    bool draw_rect_texture(Renderer renderer, Texture texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr);
-    bool draw_mesh_texture(Renderer renderer, Buffer vertexBuffer, Buffer indexBuffer, uint32_t indexCount, Texture texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings = nullptr);
-
-    RenderTarget render_target_create(Renderer renderer, int width, int height);
-    void render_target_destroy(RenderTarget target);
-    bool render_target_is_valid(RenderTarget target);
-    Texture render_target_get_color_texture(RenderTarget target);
-    Texture render_target_get_depth_texture(RenderTarget target);
-
-    Texture texture_create(Renderer renderer, const void* pixels, int width, int height);
-    void texture_destroy(Texture texture);
-    bool texture_is_valid(Texture texture);
-
-    Buffer buffer_create(Renderer renderer, const void* data, size_t size, BufferType type);
-    void buffer_destroy(Buffer buffer);
-    bool buffer_is_valid(Buffer buffer);
-
-    Pipeline pipeline_create(Renderer renderer, const PipelineDesc& desc);
-    void pipeline_destroy(Pipeline pipeline);
-    bool pipeline_is_valid(Pipeline pipeline);
 }

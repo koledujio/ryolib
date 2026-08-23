@@ -1,36 +1,32 @@
 #include "../private.h"
 
 namespace ryo {
-    void draw_pass_begin(Renderer renderer, RenderTarget* target, const Color* clearColor) {
-        RYO_ENSURE_VOID(renderer_is_valid(renderer), "Invalid renderer handle");
-
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
-
-        RYO_ENSURE_VOID(!ir.inPass, "Renderer already in a draw pass");
+    void Renderer::draw_pass_begin(RenderTarget* target, const Color* clearColor) {
+        RYO_ENSURE_VOID(valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(internal->inFrame, "Renderer not in a frame");
+        RYO_ENSURE_VOID(!internal->inPass, "Renderer already in a draw pass");
 
         ID3D11RenderTargetView* colorView = nullptr;
         ID3D11DepthStencilView* depthView = nullptr;
 
         if (target) {
-            RYO_ENSURE_VOID(render_target_is_valid(*target), "Invalid non-null render target handle");
+            RYO_ENSURE_VOID(target->valid(), "Invalid render target");
 
-            _InternalRenderTarget& renderTarget = _render_target_pool.items[target->index()];
-
-            colorView = renderTarget.colorView;
-            depthView = renderTarget.depthView;
+            colorView = target->internal->colorView;
+            depthView = target->internal->depthView;
         } else {
-            colorView = ir.renderTargetView;
-            depthView = ir.depthStencilView;
+            colorView = internal->colorView;
+            depthView = internal->depthView;
         }
 
-        RYO_ASSERT_VOID(colorView != nullptr, "Failed to get color view");
-        RYO_ASSERT_VOID(depthView != nullptr, "Failed to get depth view");
+        RYO_ASSERT_VOID(colorView != nullptr, "Invalid render target view");
+        RYO_ASSERT_VOID(depthView != nullptr, "Invalid depth stencil view");
 
-        ir.context->OMSetRenderTargets(1, &colorView, depthView);
-        ir.context->OMSetDepthStencilState(ir.depthStencilState, 0);
+        internal->context->OMSetRenderTargets(1, &colorView, depthView);
+        internal->context->OMSetDepthStencilState(internal->depthState, 0);
 
-        int width = target ? _render_target_pool.items[target->index()].width : ir.width;
-        int height = target ? _render_target_pool.items[target->index()].height : ir.height;
+        int width = target ? target->internal->width : internal->width;
+        int height = target ? target->internal->height : internal->height;
 
         D3D11_VIEWPORT viewport = {};
         viewport.TopLeftX = 0.0f;
@@ -40,7 +36,7 @@ namespace ryo {
         viewport.MinDepth = 0.0f;
         viewport.MaxDepth = 1.0f;
 
-        ir.context->RSSetViewports(1, &viewport);
+        internal->context->RSSetViewports(1, &viewport);
 
         if (clearColor) {
             const float color[] = {
@@ -50,27 +46,25 @@ namespace ryo {
                 clearColor->a
             };
 
-            ir.context->ClearRenderTargetView(colorView, color);
+            internal->context->ClearRenderTargetView(colorView, color);
 
             if (depthView) {
-                ir.context->ClearDepthStencilView(depthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+                internal->context->ClearDepthStencilView(depthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
             }
         }
 
-        ir.currentTarget = target ? *target : RenderTarget{ 0 };
-        ir.inPass = true;
+        internal->currentTarget = target;
+        internal->inPass = true;
     }
 
-    void draw_pass_end(Renderer renderer) {
-        RYO_ENSURE_VOID(renderer_is_valid(renderer), "Invalid renderer handle");
+    void Renderer::draw_pass_end() {
+        RYO_ENSURE_VOID(valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(internal->inFrame, "Renderer not in a frame");
+        RYO_ENSURE_VOID(internal->inPass, "Renderer not in a draw pass");
 
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
+        internal->context->OMSetRenderTargets(0, nullptr, nullptr);
 
-        RYO_ENSURE_VOID(ir.inPass, "Renderer not in a draw pass");
-
-        ir.context->OMSetRenderTargets(0, nullptr, nullptr);
-
-        ir.currentTarget = { 0 };
-        ir.inPass = false;
+        internal->currentTarget = nullptr;
+        internal->inPass = false;
     }
 }

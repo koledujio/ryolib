@@ -1,7 +1,7 @@
 #include "../private.h"
 
 namespace ryo {
-     void _renderer_sampler_init(_InternalRenderer& internalRenderer) {
+    void _renderer_sampler_init(InternalRenderer& internalRenderer) {
         MTLSamplerDescriptor* nearestSamplerDesc = [[MTLSamplerDescriptor alloc] init];
         nearestSamplerDesc.minFilter = MTLSamplerMinMagFilterNearest;
         nearestSamplerDesc.magFilter = MTLSamplerMinMagFilterNearest;

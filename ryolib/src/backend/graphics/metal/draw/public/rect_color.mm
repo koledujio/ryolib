@@ -1,17 +1,16 @@
 #include "../private.h"
 
 namespace ryo {
-    bool draw_rect_color(Renderer renderer, const Color &color, const Matrix4 &matrix, const DrawSettings* settings) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
+    bool Renderer::draw_rect_color(const Color &color, const Matrix4 &matrix, const DrawSettings* settings) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
 
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
-        RYO_ENSURE(ir.inPass && ir.currentEncoder, false, "Renderer not in a draw_pass_begin / draw_pass_end block");
-        RYO_ASSERT(ir.currentCommandBuffer && ir.currentDrawable, false, "Renderer has no valid currentCommandBuffer or currentDrawable");
+        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
+        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
 
-        id<MTLRenderPipelineState> pso = _draw_get_pso(settings, ir.defaultColorPipeline);
+        id<MTLRenderPipelineState> pso = _draw_get_pso(settings, internal->defaultColorPipeline);
         RYO_ASSERT(pso != nil, false, "Failed to get valid pipeline state");
 
-        id<MTLRenderCommandEncoder> encoder = ir.currentEncoder;
+        id<MTLRenderCommandEncoder> encoder = internal->currentEncoder;
 
         PositionVertex vertices[4] = {
             { {-0.5f, -0.5f, 0.0f } },
@@ -21,12 +20,12 @@ namespace ryo {
         };
 
         [encoder setRenderPipelineState:pso];
-        [encoder setDepthStencilState:ir.depthStencil];
+        [encoder setDepthStencilState:internal->depthStencilState];
         [encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:0];
 
         if (settings && settings->camera) {
             int width, height;
-            _draw_get_target_size(ir, width, height);
+            _draw_get_target_size(*internal, width, height);
             float fWidth = (float)width;
             float fHeight = (float)height;
             [encoder setVertexBytes:(_compute_camera_vp(*settings->camera, fWidth / fHeight) * matrix).m length:sizeof(Matrix4) atIndex:1];

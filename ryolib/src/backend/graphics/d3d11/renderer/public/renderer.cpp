@@ -3,14 +3,7 @@
 #include <cstdio>
 
 namespace ryo {
-    ResourcePool<_InternalRenderer, MAX_RENDERERS> _renderer_pool;
-
-    Renderer renderer_create(const RendererConfig& config) {
-        if (_renderer_pool.active_count >= MAX_RENDERERS) {
-            error_set("Maximum number of renderers reached");
-            return {};
-        }
-
+    Renderer::Renderer(const RendererConfig& config) {
         UINT creationFlags = 0;
 #ifdef _DEBUG
         creationFlags |= D3D11_CREATE_DEVICE_DEBUG
@@ -36,72 +29,102 @@ namespace ryo {
 
         if (FAILED(hr)) {
             error_set("Failed to create D3D11 Device HRESULT: 0x%08X", (unsigned int)hr);
-            return {};
+            return;
         }
 
-        Renderer result = _renderer_create(config, device, context);
-
+        InternalRenderer* intern = _renderer_create(config, device, context);
+        
         device->Release();
         context->Release();
 
-        return result;
+        internal = intern;
+
+        _renderer_init_pipelines(*this, *internal);
     }
 
-    Renderer renderer_create_share_resources(const RendererConfig& config, Renderer renderer) {
-        if (_renderer_pool.active_count >= MAX_RENDERERS) {
-            error_set("Maximum number of renderers reached");
-            return {};
+    Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid base renderer");
+
+        InternalRenderer* intern = _renderer_create(config, renderer.internal->device, renderer.internal->context);
+
+        internal = intern;
+
+        _renderer_init_pipelines(*this, *internal);
+    }
+
+    Renderer::~Renderer() {
+        if (!internal)
+            return;
+
+        if (internal->defaultColorPipeline) delete internal->defaultColorPipeline;
+        if (internal->defaultTexturePipeline) delete internal->defaultTexturePipeline;
+
+        if (internal->colorView) internal->colorView->Release();
+        if (internal->depthTexture) internal->depthTexture->Release();
+        if (internal->depthState) internal->depthState->Release();
+
+        if (internal->swapChain) internal->swapChain->Release();
+        if (internal->context) internal->context->Release();
+        if (internal->device) internal->device->Release();
+
+        delete internal;
+    }
+
+    Renderer::Renderer(Renderer&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Renderer& Renderer::operator=(Renderer&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            if (internal->defaultColorPipeline) delete internal->defaultColorPipeline;
+            if (internal->defaultTexturePipeline) delete internal->defaultTexturePipeline;
+
+            if (internal->colorView) internal->colorView->Release();
+            if (internal->depthTexture) internal->depthTexture->Release();
+            if (internal->depthState) internal->depthState->Release();
+
+            if (internal->swapChain) internal->swapChain->Release();
+            if (internal->context) internal->context->Release();
+            if (internal->device) internal->device->Release();
+
+            delete internal;
         }
 
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid base renderer handle");
+        internal = other.internal;
+        other.internal = nullptr;
 
-        _InternalRenderer& baseIr = _renderer_pool.items[renderer.index()];
-        RYO_ASSERT(baseIr.device != nullptr && baseIr.context != nullptr, {}, "Base renderer has no valid D3D11 device");
-
-        return _renderer_create(config, baseIr.device, baseIr.context);
+        return *this;
     }
 
-    void renderer_destroy(Renderer renderer) {
-        RYO_ENSURE_VOID(renderer_is_valid(renderer), "Invalid renderer handle");
-
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-
-        _renderer_release_window_targets(ir);
-        if (ir.depthStencilState) ir.depthStencilState->Release();
-        if (ir.swapChain) ir.swapChain->Release();
-        if (ir.context) ir.context->Release();
-        if (ir.device) ir.device->Release();
-
-        ir = {};
-
-        _renderer_pool.free_index(idx);
+    bool Renderer::valid() const {
+        return (internal != nullptr &&
+                internal->device != nullptr &&
+                internal->context != nullptr &&
+                internal->swapChain != nullptr &&
+                internal->colorView != nullptr &&
+                internal->depthTexture != nullptr &&
+                internal->depthView != nullptr &&
+                internal->depthState != nullptr &&
+                internal->width > 0 &&
+                internal->height > 0);
     }
 
-    bool renderer_is_valid(Renderer renderer) {
-        INDEX idx = renderer.index();
+    bool Renderer::resize(unsigned int width, unsigned int height) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
 
-        if (idx >= MAX_RENDERERS || idx == 0)
-            return false;
-
-        return _renderer_pool.is_valid(idx, renderer.gen());
-    }
-
-    bool renderer_resize(Renderer renderer, int width, int height) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
-
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-        if (width == ir.width && height == ir.height) {
+        if (width == internal->width && height == internal->height) {
             error_set("Cannot resize renderer, new size and current size are the same");
             return false;
         }
 
         // ResizeBuffers requires every view of the old back buffer to be released first.
-        ir.context->OMSetRenderTargets(0, nullptr, nullptr);
-        _renderer_release_window_targets(ir);
+        internal->context->OMSetRenderTargets(0, nullptr, nullptr);
+        _renderer_release_window_targets(*internal);
 
-        HRESULT hr = ir.swapChain->ResizeBuffers(
+        HRESULT hr = internal->swapChain->ResizeBuffers(
             0,
             width,
             height,
@@ -114,13 +137,13 @@ namespace ryo {
             return false;
         }
 
-        if (!_renderer_create_window_targets(ir, width, height)) {
+        if (!_renderer_create_window_targets(*internal, width, height)) {
             error_set("Failed to recreate swap-chain render targets after resize");
             return false;
         }
 
-        ir.width = width;
-        ir.height = height;
+        internal->width = width;
+        internal->height = height;
 
         return true;
     }

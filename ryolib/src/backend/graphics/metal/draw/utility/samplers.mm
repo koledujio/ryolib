@@ -1,7 +1,7 @@
 #include "../private.h"
 
 namespace ryo {
-    id<MTLSamplerState> _sampler_get_from_type(_InternalRenderer& internalRenderer, SamplerType type) {
+    id<MTLSamplerState> _sampler_get_from_type(InternalRenderer& internalRenderer, SamplerType type) {
         switch (type) {
             case SAMPLER_TYPE_NEAREST:
                 return internalRenderer.nearestSampler;

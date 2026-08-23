@@ -1,31 +1,14 @@
 #include "../private.h"
 
 namespace ryo {
-    ResourcePool<id<MTLRenderPipelineState>, MAX_PIPELINES> _pipeline_pool;
+    Pipeline::Pipeline(const Renderer& renderer, const PipelineDesc& desc) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
 
-    static void _pipeline_force_destroy(INDEX idx) {
-        if (_pipeline_pool.items[idx]) {
-            [_pipeline_pool.items[idx] release];
-        }
-        _pipeline_pool.items[idx] = nil;
-        _pipeline_pool.free_index(idx);
-    }
+        id<MTLDevice> device = renderer.internal->device;
 
-    Pipeline pipeline_create(Renderer renderer, const PipelineDesc& desc) {
-        if (_pipeline_pool.active_count >= MAX_PIPELINES) {
-            error_set("Maximum number of pipelines reached");
-            return {};
-        }
-
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-
-        id<MTLDevice> device = _renderer_pool.items[renderer.index()].device;
-
-        id<MTLLibrary> library = _renderer_pool.items[renderer.index()].shaderLibrary; // todo: add shaderLibrary validation to renderer_is_valid
-        RYO_ASSERT(library != nullptr, {}, "No shaderLibrary in renderer");
-
-        INDEX idx = _pipeline_pool.allocate_index();
-        GENID gen = _pipeline_pool.generations[idx];
+        id<MTLLibrary> library = renderer.internal->shaderLibrary;
+        RYO_ASSERT_VOID(library != nullptr, "No shaderLibrary in renderer");
 
         NSString* nameStr = _pipeline_get_shader_name(desc.shader);
         NSString* vertFunNameSuffix = @"_vertex_main";
@@ -38,18 +21,15 @@ namespace ryo {
 
         if (!vert && !frag) {
             error_set("Failed to find metal shader functions(vertex, fragment): %s, %s", vertFunName.UTF8String, fragFunName.UTF8String);
-            _pipeline_force_destroy(idx);
-            return {};
+            return;
         } else if (!vert) {
             error_set("Failed to find metal shader vertex function: %s", vertFunName.UTF8String);
             [frag release];
-            _pipeline_force_destroy(idx);
-            return {};
+            return;
         } else if (!frag) {
             error_set("Failed to find metal shader fragment function: %s", fragFunName.UTF8String);
             [vert release];
-            _pipeline_force_destroy(idx);
-            return {};
+            return;
         }
 
         MTLVertexDescriptor* vertexDesc = _pipeline_get_vertex_descriptor(desc.vertexLayout);
@@ -71,35 +51,51 @@ namespace ryo {
             [vert release];
             [frag release];
             [pipelineDesc release];
-            _pipeline_force_destroy(idx);
-            return {};
+            return; // finish editing pipeline.mm to match graphics.h(OOP)
         }
 
         [vert release];
         [frag release];
         [pipelineDesc release];
-        _pipeline_pool.items[idx] = pso;
 
-        return Pipeline::pack(idx, gen);
+        InternalPipeline* intern = new InternalPipeline;
+        intern->pso = pso;
+
+        internal = intern;
     }
 
-    void pipeline_destroy(Pipeline pipeline) {
-        RYO_ENSURE_VOID(pipeline_is_valid(pipeline), "Invalid pipeline handle");
+    Pipeline::~Pipeline() {
+        if (!internal)
+            return;
 
-        INDEX idx = pipeline.index();
-
-       _pipeline_force_destroy(idx);
+        if (internal->pso)
+            [internal->pso release];
+        
+        delete internal;
     }
 
-    bool pipeline_is_valid(Pipeline pipeline) {
-        INDEX idx = pipeline.index();
+    Pipeline::Pipeline(Pipeline&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
 
-        if (idx >= MAX_PIPELINES)
-            return false;
+    Pipeline& Pipeline::operator=(Pipeline&& other) {
+        if (this == &other)
+            return *this;
         
-        if (!_pipeline_pool.is_valid(idx, pipeline.gen()))
-            return false;
-        
-        return _pipeline_pool.items[idx] != nil;
+        if (internal) {
+            if (internal->pso)
+                [internal->pso release];
+            
+            delete internal;
+        }
+
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
+    }
+
+    bool Pipeline::valid() const {
+        return internal != nullptr && internal->pso != nil;
     }
 }

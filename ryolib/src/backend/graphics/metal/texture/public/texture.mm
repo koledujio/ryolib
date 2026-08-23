@@ -1,54 +1,59 @@
 #include "../../private.h"
 
 namespace ryo {
-    ResourcePool<id<MTLTexture>, MAX_TEXTURES> _texture_pool;
-
-    Texture texture_create(Renderer renderer, const void *pixels, int width, int height) {
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-
-        if (_texture_pool.active_count >= MAX_TEXTURES) {
-            error_set("Maximum number of textures reached");
-            return { 0 };
-        }
-
-        id<MTLDevice> device = _renderer_pool.items[renderer.index()].device;
-
-        INDEX idx = _texture_pool.allocate_index();
-        GENID gen = _texture_pool.generations[idx];
+    Texture::Texture(const Renderer& renderer, const void *pixels, unsigned int width, unsigned int height) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer handle");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
 
         MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:width height:height mipmapped:NO];
-
-        id<MTLTexture> mtlTexture = [device newTextureWithDescriptor:desc];
+        id<MTLTexture> mtlTexture = [renderer.internal->device newTextureWithDescriptor:desc];
 
         MTLRegion region = MTLRegionMake2D(0, 0, width, height);
         NSUInteger bytesPerRow = 4 * width; // assuming 4 bytes per pixel (RGBA)
         [mtlTexture replaceRegion:region mipmapLevel:0 withBytes:pixels bytesPerRow:bytesPerRow];
 
-        _texture_pool.items[idx] = mtlTexture;
+        InternalTexture* intern = new InternalTexture;
+        intern->texture = mtlTexture;
 
-        return Texture::pack(idx, gen);
+        internal = intern;
     }
 
-    void texture_destroy(Texture texture) {
-        RYO_ENSURE_VOID(texture_is_valid(texture), "Invalid texture handle");
-
-        INDEX idx = texture.index();
-
-        [_texture_pool.items[idx] release];
-        _texture_pool.items[idx] = nil;
-
-        _texture_pool.free_index(idx);
+    Texture::Texture(InternalTexture* internal) {
+        this->internal = internal;
     }
 
-    bool texture_is_valid(Texture texture) {
-        INDEX idx = texture.index();
-
-        if (idx >= MAX_TEXTURES)
-            return false;
+    Texture::~Texture() {
+        if (!internal)
+            return;
         
-        if (!_texture_pool.is_valid(idx, texture.gen()))
-            return false;
+        if (internal->texture)
+            [internal->texture release];
+        
+        delete internal;
+    }
 
-        return _texture_pool.items[idx] != nil;
+    Texture::Texture(Texture&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Texture& Texture::operator=(Texture&& other) {
+        if (this == &other)
+            return *this;
+        
+        if (internal) {
+            if (internal->texture)
+                [internal->texture release];
+            
+            delete internal;
+        }
+
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
+    }
+
+    bool Texture::valid() const {
+        return internal != nullptr && internal->texture != nil;
     }
 }

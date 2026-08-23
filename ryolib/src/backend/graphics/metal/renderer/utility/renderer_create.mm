@@ -1,11 +1,8 @@
 #include "../private.h"
 
 namespace ryo {
-    Renderer _renderer_create(const RendererConfig& config, id<MTLDevice> device) {
-        INDEX idx = _renderer_pool.allocate_index();
-        GENID gen = _renderer_pool.generations[idx];
-
-        id<MTLCommandQueue>queue = [device newCommandQueue];
+    bool _renderer_create(Renderer& renderer, const RendererConfig& config, id<MTLDevice> device) {
+        id<MTLCommandQueue> queue = [device newCommandQueue];
 
         CAMetalLayer* layer = [CAMetalLayer layer];
         layer.device = device;
@@ -21,30 +18,42 @@ namespace ryo {
             }
         }
 
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-        ir.device = [device retain];
-        ir.queue = queue;
-        ir.metalLayer = layer;
-        ir.width = config.width;
-        ir.height = config.height;
+        InternalRenderer* intern = new InternalRenderer;
+        intern->device = [device retain];
+        intern->queue = queue;
+        intern->metalLayer = layer;
+        intern->width = config.width;
+        intern->height = config.height;
 
-        if (!_renderer_pipeline_init(Renderer::pack(idx, gen), ir)) {
-            return {};
-        }
+        renderer.internal = intern;
 
-        _renderer_sampler_init(ir);
+        _renderer_sampler_init(*intern);
 
         MTLDepthStencilDescriptor* depthStencilDesc = [[MTLDepthStencilDescriptor alloc] init];
         depthStencilDesc.depthCompareFunction = MTLCompareFunctionLess;
         depthStencilDesc.depthWriteEnabled = YES;
-        ir.depthStencil = [ir.device newDepthStencilStateWithDescriptor:depthStencilDesc];
+        intern->depthStencilState = [device newDepthStencilStateWithDescriptor:depthStencilDesc];
         [depthStencilDesc release];
 
         MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:config.width height:config.height mipmapped:NO];
         depthTextureDesc.usage = MTLTextureUsageRenderTarget;
         depthTextureDesc.storageMode = MTLStorageModePrivate;
-        ir.mainWindowDepthTexture = [device newTextureWithDescriptor:depthTextureDesc];
+        intern->mainWindowDepthTexture = [device newTextureWithDescriptor:depthTextureDesc];
 
-        return Renderer::pack(idx, gen);
+        if (!_renderer_pipeline_init(renderer, *intern)) {
+            [intern->metalLayer release];
+            [intern->depthStencilState release];
+            [intern->mainWindowDepthTexture release];
+            [intern->nearestSampler release];
+            [intern->linearSampler release];
+            [intern->minNearestMagLinearSampler release];
+            [intern->minLinearMagNearestSampler release];
+            [intern->queue release];
+            [intern->device release];
+            delete intern;
+            return false;
+        }
+
+        return true;
     }
 }

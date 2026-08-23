@@ -1,14 +1,13 @@
 #include "../private.h"
 
 namespace ryo {
-    bool draw_rect_color(Renderer renderer, const Color& color, const Matrix4& matrix, const DrawSettings* settings) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
-        
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
-        RYO_ENSURE(ir.inPass, false, "Renderer not in a draw pass");
+    bool Renderer::draw_rect_color(const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
+        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
 
-        Pipeline pipeline = _draw_select_pipeline(settings, ir.defaultColorPipeline);
-        RYO_ASSERT(pipeline_is_valid(pipeline), false, "Failed to get a valid pipeline");
+        const Pipeline* pipeline = _draw_select_pipeline(settings, internal->defaultColorPipeline);
+        RYO_ASSERT(pipeline->valid(), false, "Failed to get a valid pipeline");
 
         PositionVertex vertices[4] = {
             { { -0.5f, -0.5f, 0.0f } },
@@ -18,16 +17,16 @@ namespace ryo {
         };
 
         ID3D11Buffer* vertexBuffer = nullptr;
-        if (!_draw_create_dynamic_buffer(ir.device, vertices, sizeof(vertices), D3D11_BIND_VERTEX_BUFFER, &vertexBuffer))
+        if (!_draw_create_dynamic_buffer(internal->device, vertices, sizeof(vertices), D3D11_BIND_VERTEX_BUFFER, &vertexBuffer))
             return false;
 
         int width = 0;
         int height = 0;
-        _draw_get_target_size(ir, width, height);
+        _draw_get_target_size(*internal, width, height);
 
-        Matrix4 mvp = _draw_get_mvp(ir, settings, matrix, width, height);
+        Matrix4 mvp = _draw_get_mvp(*internal, settings, matrix, width, height);
 
-        if (!_draw_bind_pipeline(ir, pipeline, settings) || !_draw_bind_mvp(ir, mvp) || !_draw_bind_color(ir, color)) {
+        if (!_draw_bind_pipeline(*internal, pipeline, settings) || !_draw_bind_mvp(*internal, mvp) || !_draw_bind_color(*internal, color)) {
             vertexBuffer->Release();
             return false;
         }
@@ -35,9 +34,9 @@ namespace ryo {
         UINT stride = sizeof(PositionVertex);
         UINT offset = 0;
 
-        ir.context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-        ir.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-        ir.context->Draw(4, 0);
+        internal->context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+        internal->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+        internal->context->Draw(4, 0);
         
         vertexBuffer->Release();
 

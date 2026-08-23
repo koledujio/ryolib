@@ -1,24 +1,24 @@
 #include "../private.h"
 
 namespace ryo {
-    void _renderer_release_window_targets(_InternalRenderer& ir) {
-        if (ir.renderTargetView) {
-            ir.renderTargetView->Release();
-            ir.renderTargetView = nullptr;
+    void _renderer_release_window_targets(InternalRenderer& ir) {
+        if (ir.colorView) {
+            ir.colorView->Release();
+            ir.colorView = nullptr;
         }
 
-        if (ir.depthStencilView) {
-            ir.depthStencilView->Release();
-            ir.depthStencilView = nullptr;
+        if (ir.depthView) {
+            ir.depthView->Release();
+            ir.depthView = nullptr;
         }
 
-        if (ir.depthStencilTexture) {
-            ir.depthStencilTexture->Release();
-            ir.depthStencilTexture = nullptr;
+        if (ir.depthTexture) {
+            ir.depthTexture->Release();
+            ir.depthTexture = nullptr;
         }
     }
 
-    bool _renderer_create_window_targets(_InternalRenderer& ir, int width, int height) {
+    bool _renderer_create_window_targets(InternalRenderer& ir, int width, int height) {
         ID3D11Texture2D* backBuffer = nullptr;
 
         HRESULT hr = ir.swapChain->GetBuffer(
@@ -35,7 +35,7 @@ namespace ryo {
         hr = ir.device->CreateRenderTargetView(
             backBuffer,
             nullptr,
-            &ir.renderTargetView
+            &ir.colorView
         );
         backBuffer->Release();
 
@@ -57,7 +57,7 @@ namespace ryo {
         hr = ir.device->CreateTexture2D(
             &depthTextureDesc,
             nullptr,
-            &ir.depthStencilTexture
+            &ir.depthTexture
         );
 
         if (FAILED(hr)) {
@@ -67,9 +67,9 @@ namespace ryo {
         }
 
         hr = ir.device->CreateDepthStencilView(
-            ir.depthStencilTexture,
+            ir.depthTexture,
             nullptr,
-            &ir.depthStencilView
+            &ir.depthView
         );
 
         if (FAILED(hr)) {

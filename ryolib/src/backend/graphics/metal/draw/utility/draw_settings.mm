@@ -29,17 +29,18 @@ namespace ryo {
         [encoder setTriangleFillMode:mtlFill];
     }
 
-    id<MTLRenderPipelineState> _draw_get_pso(const DrawSettings* settings, const Pipeline& defaultPipeline) {
-        Pipeline pipeline;
+    id<MTLRenderPipelineState> _draw_get_pso(const DrawSettings* settings, const Pipeline* defaultPipeline) {
+        const Pipeline* pipeline = nullptr;
 
         if (settings != nullptr && settings->pipelineOverride != nullptr) {
-            pipeline = *settings->pipelineOverride;
+            pipeline = settings->pipelineOverride;
         } else {
             pipeline = defaultPipeline;
         }
         
-        if (!pipeline_is_valid(pipeline)) return nil;
+        if (pipeline == nullptr) return nil;
+        if (!pipeline->valid()) return nil;
 
-        return _pipeline_pool.items[pipeline.index()];
+        return pipeline->internal->pso;
     }
 }

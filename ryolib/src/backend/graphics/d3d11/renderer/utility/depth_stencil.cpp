@@ -1,7 +1,7 @@
 #include "../private.h"
 
 namespace ryo {
-    bool _renderer_create_depth_stencil_state(_InternalRenderer& ir) {
+    bool _renderer_create_depth_stencil_state(InternalRenderer& ir) {
         D3D11_DEPTH_STENCIL_DESC desc = {};
         desc.DepthEnable = TRUE;
         desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
@@ -10,7 +10,7 @@ namespace ryo {
 
         HRESULT hr = ir.device->CreateDepthStencilState(
             &desc,
-            &ir.depthStencilState
+            &ir.depthState
         );
 
         if (FAILED(hr)) {

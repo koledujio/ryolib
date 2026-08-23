@@ -1,17 +1,15 @@
 #include "../private.h"
 
 namespace ryo {
-    void _render_target_release(_InternalRenderTarget& renderTarget) {
+    void _render_target_release(InternalRenderTarget& renderTarget) {
         _render_target_release_views(renderTarget);
 
-        if (texture_is_valid(renderTarget.colorTextureHandle)) {
-            texture_destroy(renderTarget.colorTextureHandle);
+        if (renderTarget.colorTexture->valid()) {
+            delete renderTarget.colorTexture;
         }
 
-        if (texture_is_valid(renderTarget.depthTextureHandle)) {
-            texture_destroy(renderTarget.depthTextureHandle);
+        if (renderTarget.depthTexture->valid()) {
+            delete renderTarget.depthTexture;
         }
-
-        renderTarget = {};
     }
 }

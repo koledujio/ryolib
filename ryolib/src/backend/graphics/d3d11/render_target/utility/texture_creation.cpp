@@ -1,12 +1,7 @@
 #include "../private.h"
 
 namespace ryo {
-    bool _render_target_create_textures(ID3D11Device* device, int width, int height, _InternalRenderTarget& result) {
-        if (_texture_pool.active_count + 1 >= MAX_TEXTURES) {
-            error_set("Not enough texture slots for render target(texture limit reached)");
-            return false;
-        }
-
+    bool _render_target_create_textures(ID3D11Device* device, int width, int height, InternalRenderTarget& result) {
         ID3D11Texture2D* colorTexture = nullptr;
         ID3D11ShaderResourceView* colorSrv = nullptr;
         ID3D11RenderTargetView* colorView = nullptr;
@@ -122,30 +117,22 @@ namespace ryo {
 
         // other
 
-        INDEX colorIdx = _texture_pool.allocate_index();
-        GENID colorGen = _texture_pool.generations[colorIdx];
+        InternalTexture* colorIntern = new InternalTexture;
+        colorIntern->texture = colorTexture;
+        colorIntern->srv = colorSrv;
+        colorIntern->width = width;
+        colorIntern->height = height;
 
-        _InternalTexture&  colorIt = _texture_pool.items[colorIdx];
-        colorIt.texture = colorTexture;
-        colorIt.srv = colorSrv;
-        colorIt.width = width;
-        colorIt.height = height;
+        InternalTexture* depthIntern = new InternalTexture;
+        depthIntern->texture = depthTexture;
+        depthIntern->srv = depthSrv;
+        depthIntern->width = width;
+        depthIntern->height = height;
 
-        INDEX depthIdx = _texture_pool.allocate_index();
-        GENID depthGen = _texture_pool.generations[depthIdx];
-
-        _InternalTexture& depthIt = _texture_pool.items[depthIdx];
-        depthIt.texture = depthTexture;
-        depthIt.srv = depthSrv;
-        depthIt.width = width;
-        depthIt.height = height;
-
-        result.colorTexture = colorTexture;
+        result.colorTexture = new Texture(colorIntern);
         result.colorView = colorView;
-        result.colorTextureHandle = Texture::pack(colorIdx, colorGen);
-        result.depthTexture = depthTexture;
+        result.depthTexture = new Texture(depthIntern);
         result.depthView = depthView;
-        result.depthTextureHandle = Texture::pack(depthIdx, depthGen);
         result.width = width;
         result.height = height;
 

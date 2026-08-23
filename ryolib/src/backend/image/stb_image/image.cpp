@@ -22,19 +22,20 @@ namespace ryo {
         stbi_image_free(pixels);
     }
 
-    Texture image_load_texture(Renderer renderer, const char* path, int& outWidth, int& outHeight) {
+    Texture* image_load_texture(const Renderer& renderer, const char* path, int& outWidth, int& outHeight) {
         int width, height;
         void* pixels;
 
         if (!image_load(path, width, height, pixels)) {
-            return {}; // image load prints error already, it has more data about the error
+            return nullptr; // image load prints error already, it has more data about the error
         }
 
-        Texture texture = texture_create(renderer, pixels, width, height);
-        if (!texture_is_valid(texture)) {
+        Texture* texture = new Texture(renderer, pixels, width, height);
+        if (!texture->valid()) {
+            delete texture;
             error_set("Failed to create texture from image '%s': %s", path, error_get());
             image_free_pixels(pixels);
-            return {};
+            return nullptr;
         }
 
         image_free_pixels(pixels);

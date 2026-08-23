@@ -1,138 +1,117 @@
 #include "../private.h"
 
 namespace ryo {
-    ResourcePool<_InternalRenderer, MAX_RENDERERS> _renderer_pool;
-
-    Renderer renderer_create(const RendererConfig& config) {
-        if (_renderer_pool.active_count >= MAX_RENDERERS) {
-            error_set("Maximum number of renderers reached");
-            return {};
-        }
-
+    Renderer::Renderer(const RendererConfig& config) {
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
         if (!device) {
             error_set("Failed to create metal device");
-            return {};
+            return;
         }
 
-        Renderer result = _renderer_create(config, device);
+        _renderer_create(*this, config, device);
+
         [device release];
-        return result;
     }
 
-    Renderer renderer_create_share_resources(const RendererConfig& config, Renderer renderer) {
-        if (_renderer_pool.active_count >= MAX_RENDERERS) {
-            error_set("Maximum number of renderers reached");
-            return {};
-        }
+    Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
 
-        id<MTLDevice> device = _renderer_pool.items[renderer.index()].device;
+        id<MTLDevice> device = renderer.internal->device;
         if (!device) {
             error_set("Failed to create shared metal device");
-            return {};
+            return;
         }
 
-        return _renderer_create(config, device);
+        _renderer_create(*this, config, device);
     }
 
-    void renderer_destroy(Renderer renderer) {
-        RYO_ENSURE_VOID(renderer_is_valid(renderer), "Invalid renderer handle");
-        INDEX idx = renderer.index();
-        _InternalRenderer& ir = _renderer_pool.items[idx];
+    Renderer::~Renderer() {
+        if (!internal)
+            return;
 
-        if (ir.metalLayer) {
-            [ir.metalLayer removeFromSuperlayer];
-            ir.metalLayer = nil;
-        }
+        if (internal->metalLayer)
+            [internal->metalLayer removeFromSuperlayer];
 
-        pipeline_destroy(ir.defaultColorPipeline);
-        pipeline_destroy(ir.defaultTexturePipeline);
-        ir.defaultColorPipeline = { 0 };
-        ir.defaultTexturePipeline = { 0 };
+        if (internal->defaultColorPipeline)
+            delete internal->defaultColorPipeline;
+        
+        if (internal->defaultTexturePipeline)
+            delete internal->defaultTexturePipeline;
 
-        if (ir.depthStencil) {
-            [ir.depthStencil release];
-            ir.depthStencil = nil;
-        }
+        if (internal->depthStencilState)
+            [internal->depthStencilState release];
 
-        if (ir.mainWindowDepthTexture) {
-            [ir.mainWindowDepthTexture release];
-            ir.mainWindowDepthTexture = nil;
-        }
+        if (internal->mainWindowDepthTexture)
+            [internal->mainWindowDepthTexture release];
 
-        if (ir.nearestSampler) [ir.nearestSampler release];
-        if (ir.linearSampler) [ir.linearSampler release];
-        if (ir.minNearestMagLinearSampler) [ir.minNearestMagLinearSampler release];
-        if (ir.minLinearMagNearestSampler) [ir.minLinearMagNearestSampler release];
-        ir.nearestSampler = nil;
-        ir.linearSampler = nil;
-        ir.minNearestMagLinearSampler = nil;
-        ir.minLinearMagNearestSampler = nil;
+        if (internal->nearestSampler)
+            [internal->nearestSampler release];
 
-        if (ir.shaderLibrary) {
-            [ir.shaderLibrary release];
-            ir.shaderLibrary = nil;
-        }
+        if (internal->linearSampler)
+            [internal->linearSampler release];
 
-        if (ir.autoreleasePool) {
-            [ir.autoreleasePool drain];
-            ir.autoreleasePool = nil;
-        }
+        if (internal->minNearestMagLinearSampler)
+            [internal->minNearestMagLinearSampler release];
 
-        if (ir.queue) {
-            [ir.queue release];
-        }
+        if (internal->minLinearMagNearestSampler)
+            [internal->minLinearMagNearestSampler release];
 
-        if (ir.device) {
-            [ir.device release];
-        }
+        if (internal->shaderLibrary)
+            [internal->shaderLibrary release];
 
-        ir.queue = nil;
-        ir.device = nil;
-        ir.currentCommandBuffer = nil;
-        ir.currentDrawable = nil;
+        if (internal->autoreleasePool)
+            [internal->autoreleasePool drain];
 
-        _renderer_pool.free_index(idx);
+        if (internal->queue)
+            [internal->queue release];
+
+        if (internal->device)
+            [internal->device release];
+
+        delete internal;
     }
 
-    bool renderer_is_valid(Renderer renderer) {
-        INDEX idx = renderer.index();
-
-        if (idx >= MAX_RENDERERS)
-            return false;
-
-        if (!_renderer_pool.is_valid(idx, renderer.gen()))
-            return false;
-
-        _InternalRenderer& ir = _renderer_pool.items[idx];
-
-        return ir.device != nil && ir.metalLayer != nil;
+    bool Renderer::valid() const {
+        // this could probably be improved...
+        return (internal != nullptr &&
+                internal->device != nil &&
+                internal->queue != nil &&
+                internal->shaderLibrary != nil &&
+                // internal->defaultColorPipeline != nullptr &&
+                // internal->defaultColorPipeline->valid() &&
+                // internal->defaultTexturePipeline != nullptr &&
+                // internal->defaultTexturePipeline->valid() &&
+                internal->depthStencilState != nil &&
+                internal->mainWindowDepthTexture != nil &&
+                internal->nearestSampler != nil &&
+                internal->linearSampler != nil &&
+                internal->minNearestMagLinearSampler != nil &&
+                internal->minLinearMagNearestSampler != nil &&
+                internal->metalLayer != nullptr);
     }
 
-    bool renderer_resize(Renderer renderer, int width, int height) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
+    bool Renderer::resize(unsigned int width, unsigned int height) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
 
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
-
-        if (width == ir.width && height == ir.height) {
+        if (width == internal->width && height == internal->height) {
             error_set("Failed to resize renderer, new size and current size are the same");
             return false;
         }
         
-        ir.metalLayer.drawableSize = NSMakeSize(width, height);
+        internal->metalLayer.drawableSize = NSMakeSize(width, height);
 
-        if (ir.mainWindowDepthTexture) {
-            [ir.mainWindowDepthTexture release];
-            ir.mainWindowDepthTexture = nil;
+        if (internal->mainWindowDepthTexture) {
+            [internal->mainWindowDepthTexture release];
+            internal->mainWindowDepthTexture = nil;
         }
 
         MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:width height:height mipmapped:NO];
         depthTextureDesc.usage = MTLTextureUsageRenderTarget;
         depthTextureDesc.storageMode = MTLStorageModePrivate;
-        ir.mainWindowDepthTexture = [ir.device newTextureWithDescriptor:depthTextureDesc];
+        internal->mainWindowDepthTexture = [internal->device newTextureWithDescriptor:depthTextureDesc];
 
-        ir.width = width;
-        ir.height = height;
+        internal->width = width;
+        internal->height = height;
 
         return true;
     }

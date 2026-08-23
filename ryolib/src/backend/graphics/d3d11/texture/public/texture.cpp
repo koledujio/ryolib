@@ -1,20 +1,11 @@
 #include "../../private.h"
 
 namespace ryo {
-    ResourcePool<_InternalTexture, MAX_TEXTURES> _texture_pool;
-
-    Texture texture_create(Renderer renderer, const void* pixels, int width, int height) {
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-
-        RYO_ENSURE(pixels != nullptr, {}, "Pixels pointer is null");
-        RYO_ENSURE(width > 0 && height > 0, {}, "Invalid dimensions");
-
-        if (_texture_pool.active_count >= MAX_TEXTURES) {
-            error_set("Maximum number of textures reached");
-            return {};
-        }
-
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
+    Texture::Texture(const Renderer& renderer, const void* pixels, unsigned int width, unsigned int height) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
+        RYO_ENSURE_VOID(pixels != nullptr, "Pixels pointer is null");
+        RYO_ENSURE_VOID(width > 0 && height > 0, "Invalid dimensions");
 
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = width;
@@ -35,10 +26,10 @@ namespace ryo {
         initData.SysMemSlicePitch = 0;
 
         ID3D11Texture2D* tex = nullptr;
-        HRESULT hr = ir.device->CreateTexture2D(&desc, &initData, &tex);
+        HRESULT hr = renderer.internal->device->CreateTexture2D(&desc, &initData, &tex);
         if (FAILED(hr)) {
             error_set("Failed to create Texture2D HRESULT: 0x%08X", (unsigned int)hr);
-            return {};
+            return;
         }
 
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -48,43 +39,61 @@ namespace ryo {
         srvDesc.Texture2D.MipLevels = 1;
 
         ID3D11ShaderResourceView* srv = nullptr;
-        hr = ir.device->CreateShaderResourceView(tex, &srvDesc, &srv);
+        hr = renderer.internal->device->CreateShaderResourceView(tex, &srvDesc, &srv);
         if (FAILED(hr)) {
             error_set("Failed to create shader resource view HRESULT: 0x%08X", (unsigned int)hr);
             tex->Release();
-            return {};
+            return;
         }
 
-        INDEX idx = _texture_pool.allocate_index();
-        GENID gen = _texture_pool.generations[idx];
+        InternalTexture* intern = new InternalTexture;
+        intern->texture = tex;
+        intern->srv = srv;
+        intern->width = width;
+        intern->height = height;
 
-        _InternalTexture& it = _texture_pool.items[idx];
-        it.texture = tex;
-        it.srv = srv;
-        it.width = width;
-        it.height = height;
-
-        return Texture::pack(idx, gen);
+        internal = intern;
     }
 
-    void texture_destroy(Texture texture) {
-        RYO_ENSURE_VOID(texture_is_valid(texture), "Invalid texture handle");
-
-        INDEX idx = texture.index();
-        _InternalTexture& it = _texture_pool.items[idx];
-
-        if (it.srv) it.srv->Release();
-        if (it.texture) it.texture->Release();
-
-        _texture_pool.free_index(idx);
+    Texture::Texture(InternalTexture* intern) {
+        internal = intern;
     }
 
-    bool texture_is_valid(Texture texture) {
-        INDEX idx = texture.index();
+    Texture::~Texture() {
+        if (!internal)
+            return;
 
-        if (idx >= MAX_TEXTURES || idx == 0)
-            return false;
+        if (internal->srv) internal->srv->Release();
+        if (internal->texture) internal->texture->Release();
+        
+        delete internal;
+    }
 
-        return _texture_pool.is_valid(idx, texture.gen());
+    Texture::Texture(Texture&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Texture& Texture::operator=(Texture&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            if (internal->srv)
+                internal->srv->Release();
+
+            if (internal->texture)
+                internal->texture->Release();
+
+            delete internal;
+        }
+
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
+    }
+
+    bool Texture::valid() const {
+        return internal != nullptr && internal->srv != nullptr && internal->texture != nullptr;
     }
 }

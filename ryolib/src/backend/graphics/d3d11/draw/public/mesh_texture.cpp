@@ -1,52 +1,46 @@
 #include "../private.h"
 
 namespace ryo {
-    bool draw_mesh_texture(Renderer renderer, Buffer vertexBuffer, Buffer indexBuffer, uint32_t indexCount, Texture texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings) {
-        RYO_ENSURE(renderer_is_valid(renderer), false, "Invalid renderer handle");
-        RYO_ENSURE(buffer_is_valid(vertexBuffer), false, "Invalid vertex buffer handle");
-        RYO_ENSURE(buffer_is_valid(indexBuffer), false, "Invalid index buffer handle");
+    bool Renderer::draw_mesh_texture(const Buffer& vertexBuffer, const Buffer& indexBuffer, uint32_t indexCount, const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+        RYO_ENSURE(vertexBuffer.valid(), false, "Invalid vertex buffer");
+        RYO_ENSURE(indexBuffer.valid(), false, "Invalid index buffer");
         RYO_ENSURE(indexCount > 0, false, "Index count is 0");
-        RYO_ENSURE(texture_is_valid(texture), false, "Invalid texture handle");
+        RYO_ENSURE(texture.valid(), false, "Invalid texture");
+        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
+        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
 
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
-        RYO_ENSURE(ir.inPass, false, "Renderer not in a draw pass");
-
-        Pipeline pipeline = _draw_select_pipeline(settings, ir.defaultTexturePipeline);
-        RYO_ASSERT(pipeline_is_valid(pipeline), false, "Failed to get a valid pipeline");
+        const Pipeline* pipeline = _draw_select_pipeline(settings, internal->defaultTexturePipeline);
+        RYO_ASSERT(pipeline->valid(), false, "Failed to get a valid pipeline");
 
         int width = 0;
         int height = 0;
-        _draw_get_target_size(ir, width, height);
+        _draw_get_target_size(*internal, width, height);
 
-        Matrix4 mvp = _draw_get_mvp(ir, settings, matrix, width, height);
+        Matrix4 mvp = _draw_get_mvp(*internal, settings, matrix, width, height);
 
-        if (!_draw_bind_pipeline(ir, pipeline, settings) || !_draw_bind_mvp(ir, mvp) || !_draw_bind_color(ir, color))
+        if (!_draw_bind_pipeline(*internal, pipeline, settings) || !_draw_bind_mvp(*internal, mvp) || !_draw_bind_color(*internal, color))
             return false;
 
-        _InternalBuffer& vertexIb = _buffer_pool.items[vertexBuffer.index()];
-        _InternalBuffer& indexIb = _buffer_pool.items[indexBuffer.index()];
-        _InternalTexture& it = _texture_pool.items[texture.index()];
-
-        ID3D11SamplerState* sampler = _draw_create_sampler(ir.device, samplerType);
+        ID3D11SamplerState* sampler = _draw_create_sampler(internal->device, samplerType);
         if (!sampler)
             return false;
 
         UINT stride = sizeof(PositionUVVertex);
         UINT offset = 0;
 
-        ir.context->IASetVertexBuffers(0, 1, &vertexIb.buffer, &stride, &offset);
-        ir.context->IASetIndexBuffer(indexIb.buffer, DXGI_FORMAT_R32_UINT, 0);
-        ir.context->PSSetShaderResources(0, 1, &it.srv);
-        ir.context->PSSetSamplers(0, 1, &sampler);
-        ir.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        ir.context->DrawIndexed(indexCount, 0, 0);
+        internal->context->IASetVertexBuffers(0, 1, &vertexBuffer.internal->buffer, &stride, &offset);
+        internal->context->IASetIndexBuffer(indexBuffer.internal->buffer, DXGI_FORMAT_R32_UINT, 0);
+        internal->context->PSSetShaderResources(0, 1, &texture.internal->srv);
+        internal->context->PSSetSamplers(0, 1, &sampler);
+        internal->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        internal->context->DrawIndexed(indexCount, 0, 0);
 
         ID3D11ShaderResourceView* nullSrv = nullptr;
-        ir.context->PSSetShaderResources(0, 1, &nullSrv);
+        internal->context->PSSetShaderResources(0, 1, &nullSrv);
 
-        if (sampler) {
+        if (sampler)
             sampler->Release();
-        }
 
         return true;
     }

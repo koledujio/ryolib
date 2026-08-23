@@ -1,7 +1,7 @@
 #include "../private.h"
 
 namespace ryo {
-    bool _pipeline_create_input_layout(const VertexLayoutType layout, const _InternalRenderer& ir, _InternalPipeline& pipeline, ID3DBlob* vertexBlob, HRESULT& hr) {
+    bool _pipeline_create_input_layout(const VertexLayoutType layout, const InternalRenderer& ir, InternalPipeline& pipeline, ID3DBlob* vertexBlob, HRESULT& hr) {
         switch (layout) {
             case VERTEX_LAYOUT_POSITION: {
                 D3D11_INPUT_ELEMENT_DESC inputElements[] = {

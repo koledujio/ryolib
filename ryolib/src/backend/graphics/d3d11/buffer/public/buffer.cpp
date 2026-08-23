@@ -1,18 +1,10 @@
 #include "../../private.h"
 
 namespace ryo {
-    ResourcePool<_InternalBuffer, MAX_BUFFERS> _buffer_pool;
-
-    Buffer buffer_create(Renderer renderer, const void* data, size_t size, BufferType type) {
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-        RYO_ENSURE(size > 0 && data != nullptr, {}, "Invalid size or null data pointer");
-
-        if (_buffer_pool.active_count >= MAX_BUFFERS) {
-            error_set("Maximum number of buffers reached");
-            return {};
-        }
-
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
+    Buffer::Buffer(const Renderer& renderer, const void* data, size_t size, BufferType type) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(size > 0 && data != nullptr, "Invalid size or null data pointer");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
 
         UINT bindFlags = 0;
         switch (type) {
@@ -34,51 +26,58 @@ namespace ryo {
 
         D3D11_SUBRESOURCE_DATA initData = {};
         D3D11_SUBRESOURCE_DATA* pInitData = nullptr;
-
-        if (data != nullptr) {
-            initData.pSysMem = data;
-            initData.SysMemPitch = 0;
-            initData.SysMemSlicePitch = 0;
-            pInitData = &initData;
-        }
+        initData.pSysMem = data;
+        initData.SysMemPitch = 0;
+        initData.SysMemSlicePitch = 0;
+        pInitData = &initData;
 
         ID3D11Buffer* d3dBuffer = nullptr;
-        HRESULT hr = ir.device->CreateBuffer(&desc, pInitData, &d3dBuffer);
+        HRESULT hr = renderer.internal->device->CreateBuffer(&desc, pInitData, &d3dBuffer);
         if (FAILED(hr)) {
             error_set("Failed to create ID3D11Buffer HRESULT: 0x%08X", (unsigned int)hr);
-            return {};
+            return;
         }
 
-        INDEX idx = _buffer_pool.allocate_index();
-        GENID gen = _buffer_pool.generations[idx];
+        InternalBuffer* intern = new InternalBuffer;
+        intern->buffer = d3dBuffer;
+        intern->type = type;
+        intern->size = size;
 
-        _InternalBuffer& ib = _buffer_pool.items[idx];
-        ib.buffer = d3dBuffer;
-        ib.type = type;
-        ib.size = size;
-
-        return Buffer::pack(idx, gen);
+        internal = intern;
     }
 
-    void buffer_destroy(Buffer buffer) {
-        RYO_ENSURE_VOID(buffer_is_valid(buffer), "Invalid buffer handle");
+    Buffer::~Buffer() {
+        if (!internal)
+            return;
 
-        INDEX idx = buffer.index();
-        _InternalBuffer& ib = _buffer_pool.items[idx];
+        if (internal->buffer)
+            internal->buffer->Release();
 
-        if (ib.buffer) {
-            ib.buffer->Release();
+        delete internal;
+    }
+
+    Buffer::Buffer(Buffer&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Buffer& Buffer::operator=(Buffer&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            if (internal->buffer)
+                internal->buffer->Release();
+
+            delete internal;
         }
 
-        _buffer_pool.free_index(idx);
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
     }
 
-    bool buffer_is_valid(Buffer buffer) {
-        INDEX idx = buffer.index();
-
-        if (idx >= MAX_BUFFERS || idx == 0)
-            return false;
-
-        return _buffer_pool.is_valid(buffer.index(), buffer.gen());
+    bool Buffer::valid() const {
+        return internal != nullptr && internal->buffer != nullptr;
     }
 }

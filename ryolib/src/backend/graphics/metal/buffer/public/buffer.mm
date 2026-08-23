@@ -1,50 +1,51 @@
 #include "../../private.h"
 
 namespace ryo {
-    ResourcePool<id<MTLBuffer>, MAX_BUFFERS> _buffer_pool;
+    Buffer::Buffer(const Renderer& renderer, const void *data, size_t size, BufferType type) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
 
-    Buffer buffer_create(Renderer renderer, const void *data, size_t size, BufferType type) {
-        if (_buffer_pool.active_count >= MAX_BUFFERS) {
-            error_set("Maximum number of buffers reached");
-            return {};
-        }
-
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-
-        id<MTLDevice> device = _renderer_pool.items[renderer.index()].device;
-
-        INDEX idx = _buffer_pool.allocate_index();
-        GENID gen = _buffer_pool.generations[idx];
-
+        id<MTLDevice> device = renderer.internal->device;
         id<MTLBuffer> mtlBuffer = [device newBufferWithBytes:data length:size options:MTLResourceStorageModeShared];
 
-        _buffer_pool.items[idx] = mtlBuffer;
+        InternalBuffer* intern = new InternalBuffer;
+        intern->buffer = mtlBuffer;
 
-        return Buffer::pack(idx, gen);
+        internal = intern;
     }
 
-    void buffer_destroy(Buffer buffer) {
-        RYO_ENSURE_VOID(buffer_is_valid(buffer), "Invalid buffer handle");
+    Buffer::~Buffer() {
+        if (!internal)
+            return;
 
-        INDEX idx = buffer.index();
+        if (internal->buffer)
+            [internal->buffer release];
 
-        if (_buffer_pool.items[idx]) {
-            [_buffer_pool.items[idx] release];
-            _buffer_pool.items[idx] = nil;
+        delete internal;
+    }
+
+    Buffer::Buffer(Buffer&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Buffer& Buffer::operator=(Buffer&& other) {
+        if (this == &other)
+            return *this;
+        
+        if (internal) {
+            if (internal->buffer != nil)
+                [internal->buffer release];
+
+            delete internal;
         }
 
-        _buffer_pool.free_index(idx);
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
     }
 
-    bool buffer_is_valid(Buffer buffer) {
-        INDEX idx = buffer.index();
-
-        if (idx >= MAX_BUFFERS)
-            return false;
-        
-        if (!_buffer_pool.is_valid(idx, buffer.gen()))
-            return false;
-
-        return _buffer_pool.items[idx] != nil;
+    bool Buffer::valid() const {
+        return internal != nullptr && internal->buffer != nil;
     }
 }

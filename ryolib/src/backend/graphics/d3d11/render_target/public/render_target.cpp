@@ -1,67 +1,68 @@
 #include "../private.h"
 
 namespace ryo {
-    ResourcePool<_InternalRenderTarget, MAX_RENDER_TARGETS> _render_target_pool;
+    RenderTarget::RenderTarget(const Renderer& renderer, unsigned int width, unsigned int height) {
+        RYO_ENSURE_VOID(renderer.valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(width > 0 && height > 0, "Invalid render target dimensions");
+        RYO_ENSURE_VOID(!renderer.internal->inFrame, "Renderer is in a frame");
 
-    RenderTarget render_target_create(Renderer renderer, int width, int height) {
-        RYO_ENSURE(renderer_is_valid(renderer), {}, "Invalid renderer handle");
-        RYO_ENSURE(width > 0 && height > 0, {}, "Invalid render target dimensions");
-
-        if (_render_target_pool.active_count >= MAX_RENDER_TARGETS) {
-            error_set("Maximum number of renderers reached");
-            return {};
+        InternalRenderTarget* intern = new InternalRenderTarget;
+        if (!_render_target_create_textures(renderer.internal->device, width, height, *intern)) { // error logs are in this function
+            delete intern;
+            return;
         }
 
-        _InternalRenderer& ir = _renderer_pool.items[renderer.index()];
+        internal = intern;
+    }
 
-        _InternalRenderTarget renderTarget = {};
-        if (!_render_target_create_textures(ir.device, width, height, renderTarget)) { // error logs are in this function
-            return {};
+    RenderTarget::~RenderTarget() {
+        if (!internal)
+            return;
+
+        _render_target_release(*internal);
+
+        delete internal;
+    }
+
+    RenderTarget::RenderTarget(RenderTarget&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    RenderTarget& RenderTarget::operator=(RenderTarget&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            _render_target_release(*internal);
+
+            delete internal;
         }
 
-        INDEX idx = _render_target_pool.allocate_index();
-        GENID gen = _render_target_pool.generations[idx];
+        internal = other.internal;
+        other.internal = nullptr;
 
-        _render_target_pool.items[idx] = renderTarget;
-
-        return RenderTarget::pack(idx, gen);
+        return *this;
     }
 
-    void render_target_destroy(RenderTarget target) {
-        RYO_ENSURE_VOID(render_target_is_valid(target), "Invalid render target handle");
-
-        INDEX idx = target.index();
-
-        _render_target_release(_render_target_pool.items[idx]);
-
-        _render_target_pool.free_index(idx);
+    bool RenderTarget::valid() const {
+        return (internal != nullptr &&
+                internal->colorView != nullptr &&
+                internal->depthView != nullptr &&
+                internal->colorTexture != nullptr &&
+                internal->depthTexture != nullptr &&
+                internal->width > 0 &&
+                internal->height > 0);
     }
 
-    bool render_target_is_valid(RenderTarget target) {
-        if (target.is_null()) return false;
+    const Texture* RenderTarget::texture_color_get() const {
+        RYO_ENSURE(valid(), nullptr, "Invalid render target");
 
-        INDEX idx = target.index();
-        GENID gen = target.gen();
-
-        if (idx >= MAX_RENDER_TARGETS || idx == 0)
-            return false;
-
-        if (!_render_target_pool.is_valid(idx, gen)) return false;
-
-        _InternalRenderTarget& irt = _render_target_pool.items[idx];
-
-        return irt.colorTexture != nullptr && irt.colorView != nullptr && irt.depthTexture != nullptr && irt.depthView != nullptr;
+        return internal->colorTexture;
     }
 
-    Texture render_target_get_color_texture(RenderTarget target) {
-        RYO_ENSURE(render_target_is_valid(target), {}, "Invalid render target handle");
+    const Texture* RenderTarget::texture_depth_get() const {
+        RYO_ENSURE(valid(), nullptr, "Invalid render target");
 
-        return _render_target_pool.items[target.index()].colorTextureHandle;
-    }
-
-    Texture render_target_get_depth_texture(RenderTarget target) {
-        RYO_ENSURE(render_target_is_valid(target), {}, "Invalid render target handle");
-
-        return _render_target_pool.items[target.index()].depthTextureHandle;
+        return internal->depthTexture;
     }
 } 

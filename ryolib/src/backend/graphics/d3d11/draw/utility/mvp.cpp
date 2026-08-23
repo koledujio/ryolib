@@ -26,7 +26,7 @@ namespace ryo {
         return projection * view;
     }
 
-    Matrix4 _draw_get_mvp(const _InternalRenderer& renderer, const DrawSettings* settings, const Matrix4& matrix, int targetWidth, int targetHeight) {
+    Matrix4 _draw_get_mvp(const InternalRenderer& renderer, const DrawSettings* settings, const Matrix4& matrix, int targetWidth, int targetHeight) {
         if (!settings || !settings->camera) return matrix;
 
         float aspect = static_cast<float>(targetWidth) / static_cast<float>(targetHeight);
@@ -36,7 +36,7 @@ namespace ryo {
         return cameraMatrix * matrix;
     }
 
-    bool _draw_bind_mvp(_InternalRenderer& renderer, const Matrix4& mvp) {
+    bool _draw_bind_mvp(InternalRenderer& renderer, const Matrix4& mvp) {
         ID3D11Buffer* buffer = nullptr;
 
         if (!_draw_create_dynamic_buffer(renderer.device, &mvp, sizeof(Matrix4), D3D11_BIND_CONSTANT_BUFFER, &buffer))
