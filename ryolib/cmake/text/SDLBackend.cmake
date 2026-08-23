@@ -22,6 +22,16 @@ function(setup_sdl_ttf_backend TARGET_NAME)
             GIT_TAG release-3.4.12
         )
         FetchContent_MakeAvailable(SDL3)
+
+        foreach(target SDL3-static SDL3-shared SDL3_test)
+            if(TARGET ${target})
+                target_include_directories(${target} BEFORE PRIVATE "${SDL3_SOURCE_DIR}/include")
+            endif()
+        endforeach()
+
+        target_include_directories(${TARGET_NAME} BEFORE PRIVATE "${SDL3_SOURCE_DIR}/include")
+
+        target_link_libraries(${TARGET_NAME} PUBLIC SDL3::SDL3-static)
     endif()
 
     # Fetch SDL_ttf (SDL3_ttf)

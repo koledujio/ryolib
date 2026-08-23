@@ -37,8 +37,15 @@ int main() {
         return 0;
     }
 
+    void* nwh = window.nwh_get();
+
+    if (nwh == nullptr) {
+        printf("[APP] Failed to get window native handle\n");
+        return 0;
+    }
+
     ryo::RendererConfig config = {};
-    config.nativeWindowHandle = window.nwh_get();
+    config.nativeWindowHandle = nwh;
     config.width = 1280;
     config.height = 720;
 
