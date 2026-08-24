@@ -9,9 +9,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+set(VITA_APP_NAME "Ryolib UI Test")
+set(VITA_TITLEID "KOLE00001")
+set(VITA_VERSION "01.00")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-include(Dependencies)
 include(CopyAssets)
 
 set(RYO_SAFETY ON CACHE BOOL "" FORCE)
@@ -22,12 +25,11 @@ else()
     set(RYO_DEBUG OFF cACHE BOOL "" FORCE)
 endif()
 
-
 add_subdirectory(ryolib)
 
 add_executable(TestApp src/main.cpp)
 
-target_link_libraries(TestApp PRIVATE ryolib glfw)
+target_link_libraries(TestApp PRIVATE ryolib)
 
 if(WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -37,6 +39,18 @@ if(WIN32)
     endif()
 
     target_link_options(TestApp PRIVATE -static -static-libgcc -static-libstdc++)
+elseif(VITA)
+    include("${VITASDK}/share/vita.cmake")
+
+    vita_create_self(ui_test.self TestApp)
+
+    vita_create_vpk(ui_test.vpk ${VITA_TITLEID} ui_test.self
+        VERSION ${VITA_VERSION}
+        NAME ${VITA_APP_NAME}
+        FILE "assets/mikudayo.mp3" "assets/mikudayo.mp3"
+    )
 endif()
 
-target_copy_assets(TestApp)
+if(NOT VITA)
+    target_copy_assets(TestApp)
+endif()

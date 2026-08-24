@@ -3,7 +3,49 @@
 #include <cstddef>
 #include <cstdio>
 
+int main_vita() {
+    ryo::Window window("Vita test", 960, 554);
+    if (!window.valid()) {
+        printf("[APP] Failed to create window!\n");
+        return 0;
+    }
+
+    ryo::AudioEngine audioEngine;
+    if (!audioEngine.valid()) {
+        printf("[APP] Failed to create audio enigne!\n");
+        return 0;
+    }
+
+    ryo::SoundDesc soundDesc = {};
+    soundDesc.path = "assets/mikudayo.mp3";
+
+    ryo::Sound sound(audioEngine, soundDesc);
+    if (!sound.valid()) {
+        printf("Failed to load sound!\n");
+        return 0;
+    }
+
+    if (!sound.play()) {
+        printf("Failed to play sound!\n");
+        return 0;
+    }
+
+    ryo::Event evt;
+
+    while (true) {
+        while(window.event_poll(evt)) {
+            
+        }
+    }
+
+    return 0;
+}
+
 int main() {
+#if __vita__
+    return main_vita();
+#endif
+
     ryo::AudioEngine audioEngine;
     if (!audioEngine.valid()) {
         printf("[APP] Failed to initialize audio engine!\n");
@@ -39,10 +81,10 @@ int main() {
 
     void* nwh = window.nwh_get();
 
-    if (nwh == nullptr) {
-        printf("[APP] Failed to get window native handle\n");
-        return 0;
-    }
+    // if (nwh == nullptr) {
+    //     printf("[APP] Failed to get window native handle\n");
+    //     return 0;
+    // }
 
     ryo::RendererConfig config = {};
     config.nativeWindowHandle = nwh;

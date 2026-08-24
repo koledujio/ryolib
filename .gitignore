@@ -1,5 +1,6 @@
 build
 build-darwin
 build-win32
+build-vita
 .DS_Store
 .cache

@@ -57,6 +57,28 @@ elseif(WIN32)
 
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
+elseif(VITA)
+    include (${VITASDK}/share/vita.cmake)
+
+    target_link_libraries(ryolib PRIVATE
+        pthread
+        SceLibKernel_stub
+    )
+
+    include(graphics/StubBackend)
+    setup_stub_graphics_backend(ryolib)
+
+    include(windowing/SDLBackend)
+    setup_sdl_backend(ryolib)
+
+    include(text/StubBackend)
+    setup_stub_text_backend(ryolib)
+
+    include(image/StubBackend)
+    setup_stub_image_backend(ryolib)
+
+    include(audio/SDLMixerBackend)
+    setup_sdl_mixer_backend(ryolib)
 else()
     message(FATAL_ERROR "[ryolib] Unsupported platform!")
     message(FATAL_ERROR "[ryolib] You're most likely building for Linux or BSD, none of which currently have a supported graphics backend.")

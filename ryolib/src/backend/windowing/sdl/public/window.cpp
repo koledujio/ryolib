@@ -162,6 +162,8 @@ namespace ryo {
         return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
         #elif defined(__APPLE__)
         return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
+        #elif defined(SDL_PLATFORM_VITA)
+        return nullptr; // appearently this should be like that
         #else
         log(LOG_TYPE_ERROR, "Window", "SDL", "Couldn't get a native window handle for an unsupported platform!");
         return nullptr;
