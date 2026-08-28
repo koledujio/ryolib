@@ -29,7 +29,7 @@ function(setup_metal_backend TARGET_NAME)
             OUTPUT ${AIR_FILE}
             COMMAND xcrun -sdk macosx metal -c ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${AIR_FILE}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER}
-            COMMENT "Compiling ${SHADER_NAME}.metal to .air"
+            COMMENT "Compiling ${SHADER_NAME}.metal to ${SHADER_NAME}.air"
         )
         list(APPEND AIR_FILES ${AIR_FILE})
     endforeach()

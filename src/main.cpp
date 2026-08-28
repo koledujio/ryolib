@@ -4,38 +4,84 @@
 #include <cstdio>
 
 int main_vita() {
+    FILE* log = fopen("ux0:data/ryolib.log", "a");
+
     ryo::Window window("Vita test", 960, 554);
     if (!window.valid()) {
-        printf("[APP] Failed to create window!\n");
+        fprintf(log, "Failed to create window! %s\n", ryo::error_get());
+        fflush(log);
         return 0;
     }
 
+    fprintf(log, "Window created.\n");
+    fflush(log);
+
     ryo::AudioEngine audioEngine;
     if (!audioEngine.valid()) {
-        printf("[APP] Failed to create audio enigne!\n");
+        fprintf(log, "Failed to create audio enigne! %s\n", ryo::error_get());
+        fflush(log);
         return 0;
     }
+
+    fprintf(log, "Audio engine created.\n");
+    fflush(log);
 
     ryo::SoundDesc soundDesc = {};
     soundDesc.path = "assets/mikudayo.mp3";
 
     ryo::Sound sound(audioEngine, soundDesc);
     if (!sound.valid()) {
-        printf("Failed to load sound!\n");
+        fprintf(log, "Failed to load sound! %s\n", ryo::error_get());
+        fflush(log);
         return 0;
     }
 
+    fprintf(log, "Sound created.\n");
+    fflush(log);
+
     if (!sound.play()) {
-        printf("Failed to play sound!\n");
+        fprintf(log, "Failed to play sound! %s\n", ryo::error_get());
+        fflush(log);
         return 0;
     }
+
+    fprintf(log, "Sound played.\n");
+    fflush(log);
+
+    ryo::RendererConfig config = {};
+    config.nativeWindowHandle = nullptr;
+    config.width = 960;
+    config.height = 554;
+
+    ryo::Renderer renderer(config);
+    if (!renderer.valid()) {
+        fprintf(log, "Failed to create renderer! %s\n", ryo::error_get());
+        fflush(log);
+        return 0;
+    }
+
+    fprintf(log, "Renderer created.\n");
+    fflush(log);
+
+    fclose(log);
 
     ryo::Event evt;
 
-    while (true) {
+    bool shouldQuit = false;
+    while (!shouldQuit) {
         while(window.event_poll(evt)) {
-            
+            switch(evt.type) {
+                case ryo::EVENT_QUIT:
+                    shouldQuit = true;
+                    break;
+
+                default:
+                    break;
+            }
         }
+
+        renderer.frame_begin();
+        renderer.frame_end();
     }
 
     return 0;
@@ -62,7 +108,7 @@ int main() {
     }
 
     ryo::SoundDesc floatplayDesc = {};
-    floatplayDesc.path = "assets/float play.flac";
+    floatplayDesc.path = "assets/float-play.flac";
     floatplayDesc.loadType = ryo::SOUND_LOAD_TYPE_STREAM;
     floatplayDesc.config.volume = 0.5f;
     floatplayDesc.config.looping = true;
@@ -202,13 +248,13 @@ int main() {
     }
 
     int mikuWidth, mikuHeight;
-    ryo::Texture* hatsuneMikuTexture = ryo::image_load_texture(renderer, "assets/hatsune miku.png", mikuWidth, mikuHeight);
+    ryo::Texture* hatsuneMikuTexture = ryo::image_load_texture(renderer, "assets/hatsune-miku.png", mikuWidth, mikuHeight);
     if (hatsuneMikuTexture == nullptr || !hatsuneMikuTexture->valid()) {
         return 0;
     }
 
     int tetoHeight, tetoWidth;
-    ryo::Texture* tetoTexture = ryo::image_load_texture(renderer, "assets/kasane teto.png", tetoWidth, tetoHeight);
+    ryo::Texture* tetoTexture = ryo::image_load_texture(renderer, "assets/kasane-teto.png", tetoWidth, tetoHeight);
     if (tetoTexture == nullptr || !tetoTexture->valid()) {
         return 0;
     }

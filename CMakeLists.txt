@@ -44,10 +44,41 @@ elseif(VITA)
 
     vita_create_self(ui_test.self TestApp)
 
+    file(GLOB_RECURSE VITA_ASSETS
+        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
+    )
+
+    set(VITA_VPK_FILES "")
+
+    foreach(ASSET ${VITA_ASSETS})
+        list(APPEND VITA_VPK_FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/${ASSET}" "assets/${ASSET}"
+        )
+    endforeach()
+
+    file(GLOB_RECURSE VITA_SHADERS
+        CONFIGURE_DEPENDS
+        "${CMAKE_BINARY_DIR}/shaders/*"
+    )
+
+    foreach(SHADER ${VITA_SHADERS})
+        if(IS_DIRECTORY "${SHADER}")
+            continue()
+        endif()
+
+        get_filename_component(SHADER_NAME "${SHADER}" NAME)
+
+        list(APPEND VITA_VPK_FILES
+            "${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME}" "shaders/${SHADER_NAME}"
+        )
+    endforeach()
+
     vita_create_vpk(ui_test.vpk ${VITA_TITLEID} ui_test.self
         VERSION ${VITA_VERSION}
         NAME ${VITA_APP_NAME}
-        FILE "assets/mikudayo.mp3" "assets/mikudayo.mp3"
+        FILE ${VITA_VPK_FILES}
     )
 endif()
 

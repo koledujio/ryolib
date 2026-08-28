@@ -65,8 +65,8 @@ elseif(VITA)
         SceLibKernel_stub
     )
 
-    include(graphics/StubBackend)
-    setup_stub_graphics_backend(ryolib)
+    include(graphics/GxmBackend)
+    setup_gxm_backend(ryolib)
 
     include(windowing/SDLBackend)
     setup_sdl_backend(ryolib)
