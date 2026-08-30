@@ -1,7 +1,7 @@
 #include "../../private.h"
 
-#include <cstdio.h>
-#include <cstdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 namespace ryo {
     static const char* _get_vertex_shader_filename(BuiltinShader shader) {

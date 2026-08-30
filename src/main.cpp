@@ -64,6 +64,9 @@ int main_vita() {
     fflush(log);
 
     fclose(log);
+    
+    ryo::Gamepad* gamepad = nullptr;
+    int gamepadId = -1;
 
     ryo::Event evt;
 
@@ -75,6 +78,31 @@ int main_vita() {
                     shouldQuit = true;
                     break;
 
+                case ryo::EVENT_PAD_ADDED:
+                    gamepad = new ryo::Gamepad(evt.data.pad.id);
+                    if (!gamepad->valid()) {
+                        delete gamepad;
+                        gamepad = nullptr;
+                    } else {
+                        gamepadId = evt.data.pad.id;
+                    }
+                
+                case ryo::EVENT_PAD_REMOVED:
+                    if (gamepadId == evt.data.pad.id) {
+                        if (gamepad)
+                            delete gamepad;
+                        
+                        gamepad = nullptr;
+                        gamepadId = -1;
+                    }
+                
+                case ryo::EVENT_PAD_BUTTON_DOWN:
+                    if (gamepadId == evt.data.pad.id) {
+                        if (evt.data.pad.button == ryo::PAD_BUTTON_RIGHT) {
+                            shouldQuit = true;
+                        }
+                    }
+
                 default:
                     break;
             }
@@ -83,6 +111,9 @@ int main_vita() {
         renderer.frame_begin();
         renderer.frame_end();
     }
+
+    if (gamepad)
+        delete gamepad;
 
     return 0;
 }

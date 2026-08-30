@@ -50,7 +50,7 @@ namespace ryo {
         intern->vdmRingBuffer = nullptr;
         intern->vdmRingBufferId = -1;
 
-        _memory_free_gpu(intern->vertexRingBuffer, intern->vdmRingBufferId);
+        _memory_free_gpu(intern->vertexRingBuffer, intern->vertexRingBufferId);
         intern->vertexRingBuffer = nullptr;
         intern->vertexRingBufferId = -1;
 
@@ -258,26 +258,28 @@ namespace ryo {
         patcherParams.hostAllocCallback = _memory_patcher_alloc;
         patcherParams.hostFreeCallback = _memory_patcher_free;
 
-        patcherParams.bufferAllocCallback = _memory_patcher_buffer_alloc;
-        patcherParams.bufferFreeCallback = _memory_patcher_buffer_free;
+        // patcherParams.bufferAllocCallback = _memory_patcher_buffer_alloc;
+        // patcherParams.bufferFreeCallback = _memory_patcher_buffer_free;
         patcherParams.bufferMem = intern->shaderPatcherBuffer;
         patcherParams.bufferMemSize = PATCHER_BUFFER_SIZE;
 
-        patcherParams.vertexUsseAllocCallback = _memory_patcher_vertex_usse_alloc;
-        patcherParams.vertexUsseFreeCallback = _memory_patcher_vertex_usse_free;
+        // patcherParams.vertexUsseAllocCallback = _memory_patcher_vertex_usse_alloc;
+        // patcherParams.vertexUsseFreeCallback = _memory_patcher_vertex_usse_free;
         patcherParams.vertexUsseMem = intern->vertexUsse;
         patcherParams.vertexUsseMemSize = PATCHER_VERTEX_USSE_SIZE;
         patcherParams.vertexUsseOffset = intern->vertexUsseOffset;
 
-        patcherParams.fragmentUsseAllocCallback = _memory_patcher_fragment_usse_alloc;
-        patcherParams.fragmentUsseFreeCallback = _memory_patcher_fragment_usse_free;
+        // patcherParams.fragmentUsseAllocCallback = _memory_patcher_fragment_usse_alloc;
+        // patcherParams.fragmentUsseFreeCallback = _memory_patcher_fragment_usse_free;
         patcherParams.fragmentUsseMem = intern->fragmentUsse;
         patcherParams.fragmentUsseMemSize = PATCHER_FRAGMENT_USSE_SIZE;
         patcherParams.fragmentUsseOffset = intern->fragmentUsseOffset;
 
-        if (sceGxmShaderPatcherCreate(&patcherParams, &intern->shaderPatcher) < 0) {
+        
+        int shaderPatcherCreateResult = sceGxmShaderPatcherCreate(&patcherParams, &intern->shaderPatcher);
+        if (shaderPatcherCreateResult < 0) {
             _renderer_destroy(intern);
-            error_set("Failed to create shader patcher");
+            error_set("Failed to create shader patcher %d", shaderPatcherCreateResult);
             return;
         }
 
