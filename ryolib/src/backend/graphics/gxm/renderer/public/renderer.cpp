@@ -16,6 +16,11 @@ namespace ryo {
         if (!intern)
             return;
 
+        if (intern->defaultColorPipeline) {
+            delete intern->defaultColorPipeline;
+            intern->defaultColorPipeline = nullptr;
+        }
+
         if (intern->context)
             sceGxmFinish(intern->context);
 
@@ -284,6 +289,17 @@ namespace ryo {
         }
 
         internal = intern;
+
+        PipelineDesc defaultColorPipelineDesc = {};
+        defaultColorPipelineDesc.shader = BUILTIN_SHADER_COLOR;
+        defaultColorPipelineDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
+        defaultColorPipelineDesc.blendMode = BLEND_MODE_OPAQUE;
+        internal->defaultColorPipeline = new Pipeline(*this, defaultColorPipelineDesc);
+        if (!internal->defaultColorPipeline->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create default color pipeline");
+            delete internal->defaultColorPipeline;
+            internal->defaultColorPipeline = nullptr;
+        }
     }
 
     Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {

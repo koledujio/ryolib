@@ -62,6 +62,7 @@ namespace ryo {
         // GXM memory management
 
         // Shader programs
+        Pipeline* defaultColorPipeline = nullptr;
 
         // Other render state
     };
@@ -71,8 +72,16 @@ namespace ryo {
     struct InternalBuffer {};
 
     struct InternalPipeline {
-        SceGxmVertexProgram* vertexProgram;
-        SceGxmFragmentProgram* fragmentProgram;
+        SceGxmShaderPatcher* shaderPatcher = nullptr;
+
+        void* vertexFileData = nullptr;
+        void* fragmentFileData = nullptr;
+
+        SceGxmShaderPatcherId vertexProgramId = 0;
+        SceGxmShaderPatcherId fragmentProgramId = 0;
+
+        SceGxmVertexProgram* vertexProgram = nullptr;
+        SceGxmFragmentProgram* fragmentProgram = nullptr;
     };
 
     enum _MemoryType {
