@@ -21,6 +21,11 @@ namespace ryo {
             intern->defaultColorPipeline = nullptr;
         }
 
+        if (intern->defaultTexturePipeline) {
+            delete intern->defaultTexturePipeline;
+            intern->defaultTexturePipeline = nullptr;
+        }
+
         if (intern->context)
             sceGxmFinish(intern->context);
 
@@ -299,6 +304,17 @@ namespace ryo {
             RYO_ASSERT_VOID(false, "Failed to create default color pipeline");
             delete internal->defaultColorPipeline;
             internal->defaultColorPipeline = nullptr;
+        }
+
+        PipelineDesc defaultTexturePipelineDesc = {};
+        defaultTexturePipelineDesc.shader = BUILTIN_SHADER_TEXTURE;
+        defaultTexturePipelineDesc.vertexLayout = VERTEX_LAYOUT_POSITION_UV;
+        defaultTexturePipelineDesc.blendMode = BLEND_MODE_OPAQUE;
+        internal->defaultTexturePipeline = new Pipeline(*this, defaultTexturePipelineDesc);
+        if (!internal->defaultTexturePipeline->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create default texture pipeline");
+            delete internal->defaultTexturePipeline;
+            internal->defaultTexturePipeline = nullptr;
         }
     }
 

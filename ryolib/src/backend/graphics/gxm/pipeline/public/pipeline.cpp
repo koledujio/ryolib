@@ -12,7 +12,7 @@ namespace ryo {
                 return "color_v.gxp";
 
             case BUILTIN_SHADER_TEXTURE:
-                return nullptr;
+                return "texture_v.gxp";
 
             default:
                 return nullptr;
@@ -25,7 +25,7 @@ namespace ryo {
                 return "color_f.gxp";
 
             case BUILTIN_SHADER_TEXTURE:
-                return nullptr;
+                return "texture_f.gxp";
 
             default:
                 return nullptr;
@@ -70,7 +70,21 @@ namespace ryo {
             }
 
             case VERTEX_LAYOUT_POSITION_UV: {
-                return false;
+                const SceGxmProgramParameter* positionParam = sceGxmProgramFindParameterBySemantic(vertexProgramData, SCE_GXM_PARAMETER_SEMANTIC_POSITION, 0);
+                const SceGxmProgramParameter* uvParam = sceGxmProgramFindParameterBySemantic(vertexProgramData, SCE_GXM_PARAMETER_SEMANTIC_TEXCOORD, 0);
+
+                if (positionParam == nullptr || uvParam == nullptr)
+                    return false;
+
+                uint32_t positionReg = sceGxmProgramParameterGetResourceIndex(positionParam);
+                uint32_t uvReg = sceGxmProgramParameterGetResourceIndex(uvParam);
+
+                registers = new uint32_t[2];
+                registers[0] = positionReg;
+                registers[1] = uvReg;
+                registerCount = 2;
+
+                return true;
             }
 
             default:
@@ -97,7 +111,27 @@ namespace ryo {
                 return true;
 
             case VERTEX_LAYOUT_POSITION_UV:
-                return false;
+                RYO_ASSERT(registerCount == 2, false, "Incorrect vertex layout registers count");
+                RYO_ASSERT(registers != nullptr, false, "Null registers pointer provided");
+
+                attributes = new SceGxmVertexAttribute[2];
+
+                attributes[0].streamIndex = 0;
+                attributes[0].offset = offsetof(PositionUVVertex, position);
+                attributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
+                attributes[0].componentCount = 3;
+                attributes[0].regIndex = registers[0];
+
+                attributes[1].streamIndex = 0;
+                attributes[1].offset = offsetof(PositionUVVertex, uv);
+                attributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
+                attributes[1].componentCount = 2;
+                attributes[1].regIndex = registers[1];
+
+                attributeSize = sizeof(PositionUVVertex);
+                attributeCount = 2;
+
+                return true;
 
             default:
                 return false;
@@ -294,8 +328,8 @@ namespace ryo {
         fprintf(log, "Fragment program created\n");
         fflush(log);
 
-        delete registers;
-        delete attributes;
+        delete[] registers;
+        delete[] attributes;
 
         InternalPipeline* intern = new InternalPipeline;
         intern->shaderPatcher = renderer.internal->shaderPatcher;

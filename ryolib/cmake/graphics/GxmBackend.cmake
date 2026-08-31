@@ -41,8 +41,10 @@ function(setup_gxm_backend TARGET_NAME)
     endif()
 
     set(GXM_SHADERS
-        src/shaders/gxm/color_f.cg
         src/shaders/gxm/color_v.cg
+        src/shaders/gxm/color_f.cg
+        src/shaders/gxm/texture_v.cg
+        src/shaders/gxm/texture_f.cg
     )
     set(GXP_FILES "")
 

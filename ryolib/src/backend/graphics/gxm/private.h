@@ -63,6 +63,7 @@ namespace ryo {
 
         // Shader programs
         Pipeline* defaultColorPipeline = nullptr;
+        Pipeline* defaultTexturePipeline = nullptr;
 
         // Other render state
     };
