@@ -8,7 +8,7 @@ namespace ryo {
     struct _DisplayBuffer {
         void* data = nullptr;
         SceUID memId = -1;
-
+        
         SceGxmColorSurface surface{};
         SceGxmSyncObject* sync = nullptr;
     };
@@ -65,12 +65,23 @@ namespace ryo {
         Pipeline* defaultColorPipeline = nullptr;
         Pipeline* defaultTexturePipeline = nullptr;
 
+        // Draw call buffers
+        Buffer* quadVertexBuffer = nullptr;
+        Buffer* quadIndexBuffer = nullptr;
+
         // Other render state
     };
 
     struct InternalRenderTarget {};
     struct InternalTexture {};
-    struct InternalBuffer {};
+
+    struct InternalBuffer {
+        void* mem = nullptr;
+        SceUID memId = -1;
+
+        size_t size;
+        BufferType type;
+    };
 
     struct InternalPipeline {
         SceGxmShaderPatcher* shaderPatcher = nullptr;
@@ -87,7 +98,8 @@ namespace ryo {
 
     enum _MemoryType {
         _MEMORY_TYPE_MAIN,
-        _MEMORY_TYPE_CDRAM
+        _MEMORY_TYPE_CDRAM,
+        _MEMORY_TYPE_UNCACHE
     };
 
     enum _USSEMemoryType {
@@ -133,7 +145,7 @@ namespace ryo {
      * @param[out] memId Reference to an SceUID for the new memory block's id
      * 
      * @pre The 'size' parameter must meet strict alignment requirements depending on the memory type:
-     *       - For '_MEMORY_TYPE_MAIN' : Must be pre-aligned to a 4 KiB (0x1000) page boundary.
+     *       - For '_MEMORY_TYPE_MAIN' and '_MEMORY_TYPE_UNCACHE' : Must be pre-aligned to a 4 KiB (0x1000) page boundary.
      *       - For '_MEMORY_TYPE_CDRAM': Must be pre-aligned to a 256 KiB (0x40000) page boundary.
      * 
      * @return True on success, false on fail. The memId value will be modified despite failing.
@@ -143,14 +155,14 @@ namespace ryo {
     bool _memory_alloc(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId);
 
     /**
-     * @brief Allocates a kernel memory block and maps it
+     * @brief Allocates a kernel memory block and maps it as read and write
      * 
      * This function calls _memory_alloc to allocate a memory block,
-     * then it maps the memory for use with the GPU. Size is automatically
-     * aligned based on memory type as specified below:
+     * then it maps the memory for use with the GPU for reading and writing.
+     * Size is automatically aligned based on memory type as specified below:
      * 
-     * - MAIN  -> Aligned using _memory_align_main
-     * - CDRAM -> Aligned using _memory_align_cdram
+     * - MAIN and UNCACHED -> Aligned using _memory_align_main
+     * - CDRAM             -> Aligned using _memory_align_cdram
      * 
      * @param[in] name   Name label
      * @param[in] size   Raw unaligned size
@@ -161,7 +173,28 @@ namespace ryo {
      * @return True on success, false on fail. The memId value will be modified
      *         despite failing, the mem value might also be modified despite failing.
      */
-    bool _memory_alloc_gpu(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId);
+    bool _memory_alloc_gpu_rw(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId);
+
+    /**
+     * @brief Allocates a kernel memory block and maps it as read-only
+     * 
+     * This function calls _memory_alloc to allocate a memory block,
+     * then it maps the memory for use with the GPU for reading.
+     * Size is automatically aligned based on memory type as specified below:
+     * 
+     * - MAIN and UNCACHED -> Aligned using _memory_align_main
+     * - CDRAM             -> Aligned using _memory_align_cdram
+     * 
+     * @param[in] name   Name label
+     * @param[in] size   Raw unaligned size
+     * @param[in] type   Memory type
+     * @param[out] mem   Reference to a void pointer for the new memory block's buffer
+     * @param[out] memId Reference to an SceUID for the new memory block's id
+     * 
+     * @return True on success, false on fail. The memId value will be modified
+     *         despite failing, the mem value might also be modified despite failing.
+     */
+    bool _memory_alloc_gpu_r(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId);
 
     /**
      * @brief Allocates a kernel USSE memory block and maps it

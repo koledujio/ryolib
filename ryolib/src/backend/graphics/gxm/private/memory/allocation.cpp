@@ -4,9 +4,16 @@
 
 namespace ryo {
     bool _memory_alloc(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId) {
+        SceKernelMemBlockType memBlockType = SCE_KERNEL_MEMBLOCK_TYPE_USER_RW;
+
+        if (type == _MEMORY_TYPE_UNCACHE)
+            memBlockType = SCE_KERNEL_MEMBLOCK_TYPE_USER_RW_UNCACHE;
+        else if (type == _MEMORY_TYPE_CDRAM)
+            memBlockType = SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW;
+
         memId = sceKernelAllocMemBlock(
             name,
-            type == _MEMORY_TYPE_MAIN ? SCE_KERNEL_MEMBLOCK_TYPE_USER_RW : SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW,
+            memBlockType,
             size,
             nullptr
         );
@@ -20,13 +27,27 @@ namespace ryo {
         return true;
     }
 
-    bool _memory_alloc_gpu(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId) {
-        size_t alignedSize = type == _MEMORY_TYPE_MAIN ? _memory_align_main(size) : _memory_align_cdram(size);
+    bool _memory_alloc_gpu_rw(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId) {
+        size_t alignedSize = (type == _MEMORY_TYPE_MAIN || type == _MEMORY_TYPE_UNCACHE) ? _memory_align_main(size) : _memory_align_cdram(size);
 
         if (!_memory_alloc(name, alignedSize, type, mem, memId))
             return false;
 
         SceGxmMemoryAttribFlags flags = static_cast<SceGxmMemoryAttribFlags>(SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE);
+
+        if (sceGxmMapMemory(mem, alignedSize, flags) < 0)
+            return false;
+
+        return true;
+    }
+
+    bool _memory_alloc_gpu_r(const char* name, size_t size, _MemoryType type, void*& mem, SceUID& memId) {
+        size_t alignedSize = (type == _MEMORY_TYPE_MAIN || type == _MEMORY_TYPE_UNCACHE) ? _memory_align_main(size) : _memory_align_cdram(size);
+
+        if (!_memory_alloc(name, alignedSize, type, mem, memId))
+            return false;
+
+        SceGxmMemoryAttribFlags flags = static_cast<SceGxmMemoryAttribFlags>(SCE_GXM_MEMORY_ATTRIB_READ);
 
         if (sceGxmMapMemory(mem, alignedSize, flags) < 0)
             return false;

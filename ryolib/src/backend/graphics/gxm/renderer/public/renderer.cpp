@@ -110,7 +110,7 @@ namespace ryo {
 
     static bool _create_display_buffers(InternalRenderer* intern, _DisplayBuffer& buffer) {
         const size_t size = 4 * intern->stride * intern->height;
-        return _memory_alloc_gpu("ryo_display", size, _MEMORY_TYPE_CDRAM, buffer.data, buffer.memId);
+        return _memory_alloc_gpu_rw("ryo_display", size, _MEMORY_TYPE_CDRAM, buffer.data, buffer.memId);
     }
 
     Renderer::Renderer(const RendererConfig& config) {
@@ -194,17 +194,17 @@ namespace ryo {
         }
 
         // GPU ring buffers
-        if (!_memory_alloc_gpu("ryo_vdm_ring", VDM_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vdmRingBuffer, intern->vdmRingBufferId)) {
+        if (!_memory_alloc_gpu_rw("ryo_vdm_ring", VDM_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vdmRingBuffer, intern->vdmRingBufferId)) {
             _renderer_destroy(intern);
             error_set("Failed to allocate VDM ring buffer");
             return;
         }
-        if (!_memory_alloc_gpu("ryo_vertex_ring", VERTEX_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vertexRingBuffer, intern->vertexRingBufferId)) {
+        if (!_memory_alloc_gpu_rw("ryo_vertex_ring", VERTEX_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vertexRingBuffer, intern->vertexRingBufferId)) {
             _renderer_destroy(intern);
             error_set("Failed to allocate vertex ring buffer");
             return;
         }
-        if (!_memory_alloc_gpu("ryo_fragment_ring", FRAGMENT_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->fragmentRingBuffer, intern->fragmentRingBufferId)) {
+        if (!_memory_alloc_gpu_rw("ryo_fragment_ring", FRAGMENT_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->fragmentRingBuffer, intern->fragmentRingBufferId)) {
             _renderer_destroy(intern);
             error_set("Failed to allocate fragment ring buffer");
             return;
@@ -246,7 +246,7 @@ namespace ryo {
         constexpr size_t PATCHER_VERTEX_USSE_SIZE = 64 * 1024;
         constexpr size_t PATCHER_FRAGMENT_USSE_SIZE = 64 * 1024;
 
-        if (!_memory_alloc_gpu("ryo_shader_patcher", PATCHER_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->shaderPatcherBuffer, intern->shaderPatcherBufferId)) {
+        if (!_memory_alloc_gpu_rw("ryo_shader_patcher", PATCHER_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->shaderPatcherBuffer, intern->shaderPatcherBufferId)) {
             _renderer_destroy(intern);
             error_set("Failed to allocate shader patcher buffer");
             return;
@@ -316,6 +316,32 @@ namespace ryo {
             delete internal->defaultTexturePipeline;
             internal->defaultTexturePipeline = nullptr;
         }
+
+        static const PositionVertex quadVertices[] = {
+            {-0.5f, -0.5f, 0.0f},
+            { 0.5f, -0.5f, 0.0f},
+            {-0.5f,  0.5f, 0.0f},
+            { 0.5f,  0.5f, 0.0f}
+        };
+
+        static const uint32_t quadIndices[] = {
+            0, 1, 2,
+            2, 1, 3
+        };
+
+        Buffer* quadVertexBuffer = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
+        if (!quadVertexBuffer->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create quad vertex buffer");
+            delete quadVertexBuffer;
+        }
+        internal->quadVertexBuffer = quadVertexBuffer;
+
+        Buffer* quadIndexBuffer = new Buffer(*this, quadIndices, sizeof(quadIndices), BUFFER_TYPE_INDEX);
+        if (!quadIndexBuffer->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create quad index buffer");
+            delete quadIndexBuffer;
+        }
+        internal->quadIndexBuffer = quadIndexBuffer;
     }
 
     Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {
