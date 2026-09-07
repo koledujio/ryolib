@@ -1,26 +1,31 @@
 #include "../../private.h"
 
 #include <psp2/gxm.h>
+#include <chrono>
 
 namespace ryo {
     void Renderer::frame_begin() {
         RYO_ENSURE_VOID(valid(), "Invalid renderer");
+        RYO_ENSURE_VOID(!internal->inFrame, "Renderer already in a frame");
+
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        if (internal->lastTime.time_since_epoch().count() != 0) {
+            std::chrono::duration<float> elapsed = now - internal->lastTime;
+            internal->deltaTime = elapsed.count();
+        } else {
+            internal->deltaTime = 0.0f;
+        }
+        internal->lastTime = now;
 
         _DisplayBuffer& buffer = internal->displayBuffers[internal->backBuffer];
-
         sceGxmPadHeartbeat(&buffer.surface, buffer.sync);
 
-        uint32_t* pixels = static_cast<uint32_t*>(buffer.data);
-
-        for (unsigned int y = 0; y < internal->height; ++y) {
-            for (unsigned int x = 0; x < internal->width; ++x) {
-                pixels[y * internal->stride + x] = 0x00FF00FF;
-            }
-        }
+        internal->inFrame = true;
     }
 
     bool Renderer::frame_end() {
         RYO_ENSURE(valid(), false, "Invalid renderer");
+        RYO_ENSURE(internal->inFrame, false, "Renderer is not in a frame");
 
         _DisplayBuffer& front = internal->displayBuffers[internal->frontBuffer];
         _DisplayBuffer& back = internal->displayBuffers[internal->backBuffer];
@@ -33,8 +38,14 @@ namespace ryo {
         internal->frontBuffer = internal->backBuffer;
         internal->backBuffer = (internal->backBuffer + 1) % 3;
 
+        internal->inFrame = false;
+
         return true;
     }
 
-    float Renderer::frame_time_get() const {return 0.0f;}
+    float Renderer::frame_time_get() const {
+        RYO_ENSURE(valid(), 0.0f, "Invalid renderer");
+
+        return internal->deltaTime;
+    }
 }

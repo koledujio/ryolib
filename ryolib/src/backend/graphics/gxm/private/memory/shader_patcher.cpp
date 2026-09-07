@@ -20,7 +20,7 @@ namespace ryo {
         void* mem = nullptr;
         SceUID memId = -1;
 
-        if (!_memory_alloc("gxm_shader_patcher_host_mem", alignedSize, _MEMORY_TYPE_MAIN, mem, memId))
+        if (!_memory_alloc_gpu_rw("gxm_shader_patcher_host_mem", alignedSize, _MEMORY_TYPE_MAIN, mem, memId))
             return nullptr;
 
         g_patcher_memory_registry[mem] = memId;
@@ -36,7 +36,7 @@ namespace ryo {
         if (it != g_patcher_memory_registry.end()) {
             SceUID memId = it->second;
 
-            _memory_free(memId);
+            _memory_free_gpu(mem, memId);
 
             g_patcher_memory_registry.erase(it);
         }

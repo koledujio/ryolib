@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
-#include <cstdio>
 
 namespace ryo {
     static const char* _get_vertex_shader_filename(BuiltinShader shader) {
@@ -32,39 +31,57 @@ namespace ryo {
         }
     }
 
-    static bool _get_vertex_layout_resource_indexes(const SceGxmProgram* vertexProgramData, VertexLayoutType layout, uint32_t*& registers, uint32_t& registerCount, FILE* log) {
+    static bool _get_vertex_layout_resource_indexes(
+        const SceGxmProgram* vertexProgramData,
+        const SceGxmProgram* fragmentProgramData,
+        VertexLayoutType layout,
+        uint32_t*& registers,
+        uint32_t& registerCount,
+        const SceGxmProgramParameter**& vertexParameters,
+        uint8_t& vertexParameterCount,
+        const SceGxmProgramParameter**& fragmentParameters,
+        uint8_t& fragmentParameterCount,
+        FILE* log
+    ) {
         RYO_ASSERT(vertexProgramData != nullptr, false, "Invalid vertex file data");
 
         switch (layout) {
             case VERTEX_LAYOUT_POSITION: {
-                fprintf(log, "Before sceGxmProgramFindParameterByName\n");
-                fflush(log);
-
                 const SceGxmProgramParameter* positionParam = sceGxmProgramFindParameterBySemantic(vertexProgramData, SCE_GXM_PARAMETER_SEMANTIC_POSITION, 0);
+                if (positionParam == nullptr) return false;
+                uint32_t positionReg = sceGxmProgramParameterGetResourceIndex(positionParam);
 
-                fprintf(log, "After sceGxmProgramFindParameterByName\n");
-                fflush(log);
+                // const SceGxmProgramParameter* mvpParam = sceGxmProgramFindParameterByName(vertexProgramData, "MVP");
+                // if (mvpParam == nullptr) return false;
 
-                // if (positionParam == nullptr) { // crash might be here too
-                //     registers = nullptr;
-                //     registerCount = 0;
-                //     return false;
-                // }
+                // const SceGxmProgramParameter* colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "Color");
+                // if (colorParam == nullptr) return false;
 
-                if (positionParam == nullptr)
-                    return false;
-
-                fprintf(log, "Before sceGxmProgramParameterGetResourceIndex\n");
-                fflush(log);
-                
-                uint32_t positionReg = sceGxmProgramParameterGetResourceIndex(positionParam); // crash is definitely here
-
-                fprintf(log, "After sceGxmProgramParameterGetResourceIndex\n");
-                fflush(log);
-
-                registers = new uint32_t;
-                *registers = positionReg;
+                registers = new uint32_t[1];
+                registers[0] = positionReg;
                 registerCount = 1;
+
+                // vertexParameters = new const SceGxmProgramParameter*[1];
+                // vertexParameters[0] = mvpParam;
+                // vertexParameterCount = 1;
+                vertexParameters = nullptr;
+                vertexParameterCount = 0;
+
+                // fragmentParameters = new const SceGxmProgramParameter*[1];
+                // fragmentParameters[0] = colorParam;
+                // fragmentParameterCount = 1;
+                fragmentParameters = nullptr;
+                fragmentParameterCount = 0;
+
+                // fprintf(log, "MVP param: %p\n", mvpParam);
+                // fprintf(log, "MVP resource index: %u\n", sceGxmProgramParameterGetResourceIndex(mvpParam));
+                // fprintf(log, "MVP type: %d\n", sceGxmProgramParameterGetType(mvpParam));
+                // fprintf(log, "MVP component count: %u\n", sceGxmProgramParameterGetComponentCount(mvpParam));
+                // fprintf(log, "Color param: %p\n", colorParam);
+                // fprintf(log, "Color resource index: %u\n", sceGxmProgramParameterGetResourceIndex(colorParam));
+                // fprintf(log, "Color type: %d\n", sceGxmProgramParameterGetType(colorParam));
+                // fprintf(log, "Color component count: %u\n", sceGxmProgramParameterGetComponentCount(colorParam));
+                // fflush(log);
 
                 return true;
             }
@@ -84,6 +101,12 @@ namespace ryo {
                 registers[1] = uvReg;
                 registerCount = 2;
 
+                vertexParameters = nullptr;
+                vertexParameterCount = 0;
+
+                fragmentParameters = nullptr;
+                fragmentParameterCount = 0;
+
                 return true;
             }
 
@@ -92,21 +115,32 @@ namespace ryo {
         }
     }
 
-    static bool _get_vertex_layout_attributes(VertexLayoutType layout, uint32_t* registers, uint32_t registerCount, SceGxmVertexAttribute*& attributes, size_t& attributeSize, uint32_t& attributeCount) {
+    static bool _get_vertex_layout_attributes(
+        VertexLayoutType layout,
+        uint32_t* registers,
+        uint32_t registerCount, 
+        SceGxmVertexAttribute*& attributes,
+        size_t& attributeSize,
+        uint32_t& attributeCount
+    ) {
         switch (layout) {
             case VERTEX_LAYOUT_POSITION:
                 RYO_ASSERT(registerCount == 1, false, "Incorrect vertex layout registers count");
                 RYO_ASSERT(registers != nullptr, false, "Null registers pointer provided");
 
-                attributes = new SceGxmVertexAttribute;
-                attributes->streamIndex = 0;
-                attributes->offset = 0;
-                attributes->format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
-                attributes->componentCount = 3;
-                attributes->regIndex = *registers;
+                attributes = new SceGxmVertexAttribute[1];
+                attributes[0].streamIndex = 0;
+                attributes[0].offset = 0;
+                attributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
+                attributes[0].componentCount = 3;
+                attributes[0].regIndex = *registers;
 
                 attributeSize = sizeof(PositionVertex);
                 attributeCount = 1;
+
+                // attributes = nullptr;
+                // attributeSize = 0;
+                // attributeCount = 0;
 
                 return true;
 
@@ -245,7 +279,11 @@ namespace ryo {
 
         uint32_t registerCount = 0;
         uint32_t* registers = nullptr;
-        if (!_get_vertex_layout_resource_indexes(vertexProgramData, desc.vertexLayout, registers, registerCount, log)) {
+        uint8_t vertexParamCount = 0;
+        const SceGxmProgramParameter** vertexParams = nullptr;
+        uint8_t fragmentParamCount = 0;
+        const SceGxmProgramParameter** fragmentParams = nullptr;
+        if (!_get_vertex_layout_resource_indexes(vertexProgramData, fragmentProgramData, desc.vertexLayout, registers, registerCount, vertexParams, vertexParamCount, fragmentParams, fragmentParamCount, log)) {
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, vertexProgramId);
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, fragmentProgramId);
             free(vertexFileData);
@@ -261,7 +299,7 @@ namespace ryo {
         SceGxmVertexAttribute* attributes = nullptr;
         size_t attributeSize = 0;
         if (!_get_vertex_layout_attributes(desc.vertexLayout, registers, registerCount, attributes, attributeSize, attributeCount)) {
-            delete registers;
+            delete[] registers;
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, vertexProgramId);
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, fragmentProgramId);
             free(vertexFileData);
@@ -273,10 +311,9 @@ namespace ryo {
         fprintf(log, "Vertex layout attributes retrieved\n");
         fflush(log);
 
-        SceGxmVertexStream stream;
-        // stream.streamIndex = 0;
+        SceGxmVertexStream stream = {};
         stream.stride = attributeSize;
-        stream.indexSource = SCE_GXM_INDEX_SOURCE_INDEX_32BIT; // I use 32-bit int indices.
+        stream.indexSource = SCE_GXM_INDEX_SOURCE_INDEX_16BIT;
 
         SceGxmVertexProgram* vertexProgram = nullptr;
         int vertexCreateResult = sceGxmShaderPatcherCreateVertexProgram(
@@ -289,8 +326,8 @@ namespace ryo {
             &vertexProgram
         );
         if (vertexCreateResult < 0) {
-            delete registers;
-            delete attributes;
+            delete[] registers;
+            delete[] attributes;
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, vertexProgramId);
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, fragmentProgramId);
             free(vertexFileData);
@@ -315,8 +352,8 @@ namespace ryo {
         if (fragmentCreateResult < 0) {
             // delete vertexprogram
             sceGxmShaderPatcherReleaseVertexProgram(renderer.internal->shaderPatcher, vertexProgram);
-            delete registers;
-            delete attributes;
+            delete[] registers;
+            delete[] attributes;
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, vertexProgramId);
             sceGxmShaderPatcherUnregisterProgram(renderer.internal->shaderPatcher, fragmentProgramId);
             free(vertexFileData);
@@ -339,6 +376,10 @@ namespace ryo {
         intern->fragmentProgramId = fragmentProgramId;
         intern->vertexProgram = vertexProgram;
         intern->fragmentProgram = fragmentProgram;
+        intern->vertexParameters = vertexParams;
+        intern->vertexParameterCount = vertexParamCount;
+        intern->fragmentParameters = fragmentParams;
+        intern->fragmentParameterCount = fragmentParamCount;
 
         internal = intern;
 
@@ -367,6 +408,12 @@ namespace ryo {
 
         if (internal->fragmentFileData != nullptr)
             free(internal->fragmentFileData);
+
+        if (internal->vertexParameters != nullptr)
+            delete[] internal->vertexParameters;
+
+        if (internal->fragmentParameters != nullptr)
+            delete[] internal->fragmentParameters;
 
         delete internal;
     }

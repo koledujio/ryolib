@@ -6,7 +6,7 @@
 int main_vita() {
     FILE* log = fopen("ux0:data/ryolib.log", "a");
 
-    ryo::Window window("Vita test", 960, 554);
+    ryo::Window window("Vita test", 960, 544);
     if (!window.valid()) {
         fprintf(log, "Failed to create window! %s\n", ryo::error_get());
         fflush(log);
@@ -51,7 +51,7 @@ int main_vita() {
     ryo::RendererConfig config = {};
     config.nativeWindowHandle = nullptr;
     config.width = 960;
-    config.height = 554;
+    config.height = 544;
 
     ryo::Renderer renderer(config);
     if (!renderer.valid()) {
@@ -63,10 +63,28 @@ int main_vita() {
     fprintf(log, "Renderer created.\n");
     fflush(log);
 
-    fclose(log);
+    ryo::Camera camera2d = {};
+    camera2d.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+    camera2d.orthographicSize = 720.0f;
+    camera2d.nearPlane = -1.0f;
+    camera2d.farPlane = 1.0f;
+    camera2d.position = {0.0f, 0.0f, 1.0f};
+    camera2d.target = {0.0f, 0.0f, 0.0f};
+    camera2d.up = {0.0f, 1.0f, 0.0f};
+
+    ryo::DrawSettings settings = {};
+    settings.camera = &camera2d;
+    settings.cullMode = ryo::CULL_MODE_NONE;
+    settings.fillMode = ryo::FILL_MODE_SOLID;
+    settings.pipelineOverride = nullptr;
+    settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
+
+    ryo::Matrix4 scaling = ryo::Matrix4::scaling(200.0f, 200.0f, 1.0f);
     
     ryo::Gamepad* gamepad = nullptr;
     int gamepadId = -1;
+
+    ryo::Color clearColor = {1.0f, 1.0f, 1.0f, 1.0f};
 
     ryo::Event evt;
 
@@ -109,8 +127,20 @@ int main_vita() {
         }
 
         renderer.frame_begin();
+
+        renderer.draw_pass_begin(nullptr, &clearColor);
+
+        if (!renderer.draw_rect_color(clearColor, scaling, &settings)) {
+            fprintf(log, "Failed to draw colored rect: %s\n", ryo::error_get());
+            fflush(log);
+        }
+
+        renderer.draw_pass_end();
+
         renderer.frame_end();
     }
+
+    fclose(log);
 
     if (gamepad)
         delete gamepad;

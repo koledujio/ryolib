@@ -1,6 +1,8 @@
 #include "../../private.h"
 
 #include <cstring>
+#include <psp2/kernel/sysmem.h>
+#include <psp2/kernel/cpu.h>
 
 namespace ryo {
     Buffer::Buffer(const Renderer& renderer, const void* data, size_t size, BufferType type) {
@@ -12,14 +14,14 @@ namespace ryo {
 
         void* mem = nullptr;
         SceUID memId = -1;
-        if (!_memory_alloc_gpu_r(
+        if (!_memory_alloc_gpu_rw(
             type == BUFFER_TYPE_VERTEX ? "buffer_vertex" : "buffer_index",
             alignedSize,
             _MEMORY_TYPE_UNCACHE,
             mem,
             memId
         )) {
-            error_set("Failed to allocate memory for buffer");
+            error_set("Failed to allocate memory for buffer %s", error_get());
             return;
         }
 

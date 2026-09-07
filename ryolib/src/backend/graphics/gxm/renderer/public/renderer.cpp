@@ -5,6 +5,9 @@
 #include <psp2/kernel/sysmem.h>
 
 #include <stdlib.h>
+#include <cstdio>
+#include <cstddef>
+#include <cstdlib>
 
 #define DISPLAY_WIDTH 960
 #define DISPLAY_HEIGHT 544
@@ -24,6 +27,22 @@ namespace ryo {
         if (intern->defaultTexturePipeline) {
             delete intern->defaultTexturePipeline;
             intern->defaultTexturePipeline = nullptr;
+        }
+
+        if (intern->depthMem) {
+            sceGxmUnmapMemory(intern->depthMem);
+            intern->depthMem = nullptr;
+        }
+
+        if (intern->depthMemId >= 0) {
+            sceKernelFreeMemBlock(intern->depthMemId);
+        }
+
+        intern->depthSurface = {};
+
+        if (intern->renderTarget) {
+            sceGxmDestroyRenderTarget(intern->renderTarget);
+            intern->renderTarget = nullptr;
         }
 
         if (intern->context)
@@ -181,10 +200,10 @@ namespace ryo {
 
         // Create GXM context
         constexpr size_t HOST_MEM_SIZE = 16 * 1024;
-        constexpr size_t VDM_RING_BUFFER_SIZE = 64 * 1024;
-        constexpr size_t VERTEX_RING_BUFFER_SIZE = 256 * 1024;
-        constexpr size_t FRAGMENT_RING_BUFFER_SIZE = 256 * 1024;
-        constexpr size_t FRAGMENT_USSE_SIZE = 64 * 1024;
+        constexpr size_t VDM_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_VDM_RING_BUFFER_SIZE;
+        constexpr size_t VERTEX_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_VERTEX_RING_BUFFER_SIZE;
+        constexpr size_t FRAGMENT_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_FRAGMENT_RING_BUFFER_SIZE;
+        constexpr size_t FRAGMENT_USSE_SIZE = SCE_GXM_DEFAULT_FRAGMENT_USSE_RING_BUFFER_SIZE;
 
         // Host memory (CPU only)
         if (!_memory_alloc("ryo_gxm_context", HOST_MEM_SIZE, _MEMORY_TYPE_MAIN, intern->contextHostMem, intern->contextHostMemId)) {
@@ -268,30 +287,91 @@ namespace ryo {
         patcherParams.hostAllocCallback = _memory_patcher_alloc;
         patcherParams.hostFreeCallback = _memory_patcher_free;
 
-        // patcherParams.bufferAllocCallback = _memory_patcher_buffer_alloc;
-        // patcherParams.bufferFreeCallback = _memory_patcher_buffer_free;
+        patcherParams.bufferAllocCallback = nullptr;
+        patcherParams.bufferFreeCallback = nullptr;
         patcherParams.bufferMem = intern->shaderPatcherBuffer;
         patcherParams.bufferMemSize = PATCHER_BUFFER_SIZE;
 
-        // patcherParams.vertexUsseAllocCallback = _memory_patcher_vertex_usse_alloc;
-        // patcherParams.vertexUsseFreeCallback = _memory_patcher_vertex_usse_free;
+        patcherParams.vertexUsseAllocCallback = nullptr;
+        patcherParams.vertexUsseFreeCallback = nullptr;
         patcherParams.vertexUsseMem = intern->vertexUsse;
         patcherParams.vertexUsseMemSize = PATCHER_VERTEX_USSE_SIZE;
         patcherParams.vertexUsseOffset = intern->vertexUsseOffset;
 
-        // patcherParams.fragmentUsseAllocCallback = _memory_patcher_fragment_usse_alloc;
-        // patcherParams.fragmentUsseFreeCallback = _memory_patcher_fragment_usse_free;
+        patcherParams.fragmentUsseAllocCallback = nullptr;
+        patcherParams.fragmentUsseFreeCallback = nullptr;
         patcherParams.fragmentUsseMem = intern->fragmentUsse;
         patcherParams.fragmentUsseMemSize = PATCHER_FRAGMENT_USSE_SIZE;
         patcherParams.fragmentUsseOffset = intern->fragmentUsseOffset;
 
-        
         int shaderPatcherCreateResult = sceGxmShaderPatcherCreate(&patcherParams, &intern->shaderPatcher);
         if (shaderPatcherCreateResult < 0) {
             _renderer_destroy(intern);
             error_set("Failed to create shader patcher %d", shaderPatcherCreateResult);
             return;
         }
+
+        SceGxmRenderTargetParams renderTargetParams = {};
+        renderTargetParams.flags = 0;
+        renderTargetParams.width = config.width;
+        renderTargetParams.height = config.height;
+        renderTargetParams.scenesPerFrame = 1;
+        renderTargetParams.multisampleMode = SCE_GXM_MULTISAMPLE_NONE;
+        renderTargetParams.multisampleLocations = 0;
+        renderTargetParams.driverMemBlock = -1;
+        int renderTargetCreateResult = sceGxmCreateRenderTarget(&renderTargetParams, &intern->renderTarget);
+        if (renderTargetCreateResult < 0) {
+            _renderer_destroy(intern);
+            error_set("Failed to create GXM render target %d", renderTargetCreateResult);
+            return;
+        }
+
+        void* depthBuffer = nullptr;
+        const uint32_t depthSize = _memory_align_cdram(intern->stride * intern->height * 4); // D24S8 = 32 bits
+        SceUID depthMemId = sceKernelAllocMemBlock(
+            "depth_stencil",
+            SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW,
+            depthSize,
+            nullptr
+        );
+        if (depthMemId < 0) {
+            _renderer_destroy(intern);
+            error_set("Failed to allocate depth stencil memory %d", depthMemId);
+            return;
+        }
+        intern->depthMemId = depthMemId;
+        int depthErr = sceKernelGetMemBlockBase(depthMemId, &depthBuffer);
+        if (depthErr < 0) {
+            _renderer_destroy(intern);
+            error_set("Failed to allocate depth stencil memory (2) %d", depthErr);
+            return;
+        }
+        intern->depthMem = depthBuffer;
+        depthErr = sceGxmMapMemory(
+            depthBuffer,
+            depthSize,
+            (SceGxmMemoryAttribFlags)(SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE)
+        );
+        if (depthErr < 0) {
+            _renderer_destroy(intern);
+            error_set("Failed to map depth stencil memory %d", depthMemId);
+            return;
+        }
+        SceGxmDepthStencilSurface depthSurface;
+        depthErr = sceGxmDepthStencilSurfaceInit(
+            &depthSurface,
+            SCE_GXM_DEPTH_STENCIL_FORMAT_S8D24,
+            SCE_GXM_DEPTH_STENCIL_SURFACE_TILED,
+            intern->stride,
+            depthBuffer,
+            nullptr
+        );
+        if (depthErr < 0) {
+            _renderer_destroy(intern);
+            error_set("Failed to allocate depth stencil memory (2) %d", depthErr);
+            return;
+        }
+        intern->depthSurface = depthSurface;
 
         internal = intern;
 
@@ -324,24 +404,34 @@ namespace ryo {
             { 0.5f,  0.5f, 0.0f}
         };
 
-        static const uint32_t quadIndices[] = {
+        static const uint16_t quadIndices[] = {
             0, 1, 2,
             2, 1, 3
         };
 
-        Buffer* quadVertexBuffer = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
-        if (!quadVertexBuffer->valid()) {
+        internal->quadVertexBuffer  = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
+        if (!internal->quadVertexBuffer->valid()) {
             RYO_ASSERT_VOID(false, "Failed to create quad vertex buffer");
-            delete quadVertexBuffer;
-        }
-        internal->quadVertexBuffer = quadVertexBuffer;
+            delete internal->quadVertexBuffer;
+            internal->quadVertexBuffer = nullptr;
 
-        Buffer* quadIndexBuffer = new Buffer(*this, quadIndices, sizeof(quadIndices), BUFFER_TYPE_INDEX);
-        if (!quadIndexBuffer->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create quad index buffer");
-            delete quadIndexBuffer;
+            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
+            fprintf(log, "Failed to create vertex quad buffer %s", error_get());
+            fflush(log);
+            fclose(log);
         }
-        internal->quadIndexBuffer = quadIndexBuffer;
+
+        internal->quadIndexBuffer = new Buffer(*this, quadIndices, sizeof(quadIndices), BUFFER_TYPE_INDEX);
+        if (!internal->quadIndexBuffer->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create quad index buffer");
+            delete internal->quadIndexBuffer ;
+            internal->quadIndexBuffer = nullptr;
+
+            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
+            fprintf(log, "Failed to create index quad buffer %s", error_get());
+            fflush(log);
+            fclose(log);
+        }
     }
 
     Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {

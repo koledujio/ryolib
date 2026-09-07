@@ -4,6 +4,8 @@
 
 #include <psp2/gxm.h>
 
+#include <chrono>
+
 namespace ryo {
     struct _DisplayBuffer {
         void* data = nullptr;
@@ -18,29 +20,22 @@ namespace ryo {
 
         void* contextHostMem = nullptr;
         SceUID contextHostMemId = -1;
-
         void* vdmRingBuffer = nullptr;
         SceUID vdmRingBufferId = -1;
-
         void* vertexRingBuffer = nullptr;
         SceUID vertexRingBufferId = -1;
-
         void* fragmentRingBuffer = nullptr;
         SceUID fragmentRingBufferId = -1;
-
         void* fragmentUsseRingBuffer = nullptr;
         SceUID fragmentUsseRingBufferId = -1;
         unsigned int fragmentUsseRingOffset = 0;
 
         SceGxmShaderPatcher* shaderPatcher = nullptr;
-
         void* shaderPatcherBuffer = nullptr;
         SceUID shaderPatcherBufferId = -1;
-
         void* vertexUsse = nullptr;
         SceUID vertexUsseId = -1;
         unsigned int vertexUsseOffset = 0;
-
         void* fragmentUsse = nullptr;
         SceUID fragmentUsseId = -1;
         unsigned int fragmentUsseOffset = 0;
@@ -53,13 +48,12 @@ namespace ryo {
         _DisplayBuffer displayBuffers[3]{};
         unsigned int frontBuffer = 0;
         unsigned int backBuffer = 1;
+        SceGxmRenderTarget* renderTarget = nullptr;
 
         // Depth/Stencil
-        // SceGxmDepthStencilSurface depthSurface{};
-        // void* depthBuffer = nullptr;
-        // SceUID depthMemId = -1;
-
-        // GXM memory management
+        SceGxmDepthStencilSurface depthSurface{};
+        void* depthMem = nullptr;
+        SceUID depthMemId = -1;
 
         // Shader programs
         Pipeline* defaultColorPipeline = nullptr;
@@ -69,7 +63,13 @@ namespace ryo {
         Buffer* quadVertexBuffer = nullptr;
         Buffer* quadIndexBuffer = nullptr;
 
-        // Other render state
+        // Frame
+        bool inFrame = false;
+        bool inPass = false;
+
+        // DeltaTime
+        float deltaTime = 0.0f;
+        std::chrono::steady_clock::time_point lastTime;
     };
 
     struct InternalRenderTarget {};
@@ -94,6 +94,12 @@ namespace ryo {
 
         SceGxmVertexProgram* vertexProgram = nullptr;
         SceGxmFragmentProgram* fragmentProgram = nullptr;
+
+        const SceGxmProgramParameter** vertexParameters = nullptr;
+        uint8_t vertexParameterCount = 0;
+
+        const SceGxmProgramParameter** fragmentParameters = nullptr;
+        uint8_t fragmentParameterCount = 0;
     };
 
     enum _MemoryType {
