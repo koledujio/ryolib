@@ -110,35 +110,35 @@ namespace ryo {
         
         mvp = mvp.transpose();
         
-        // void* vertexUniforms = nullptr;
-        // int result = sceGxmReserveVertexDefaultUniformBuffer(internal->context, &vertexUniforms);
-        // if (result < 0) {
-        //     error_set("sceGxmReserveVertexDefaultUniformBuffer 0x%08X", result);
-        //     return false;
-        // }
-        // result = sceGxmSetUniformDataF(vertexUniforms, pipeline->internal->vertexParameters[0], 0, 16, mvp.m);
-        // if (result < 0) {
-        //     error_set("sceGxmSetUniformDataF: 0x%08X", result);
-        //     return false;
-        // }
+        void* vertexUniforms = nullptr;
+        int result = sceGxmReserveVertexDefaultUniformBuffer(internal->context, &vertexUniforms);
+        if (result < 0) {
+            error_set("sceGxmReserveVertexDefaultUniformBuffer 0x%08X", result);
+            return false;
+        }
+        result = sceGxmSetUniformDataF(vertexUniforms, pipeline->internal->vertexParameters[0], 0, 16, mvp.m);
+        if (result < 0) {
+            error_set("sceGxmSetUniformDataF: 0x%08X", result);
+            return false;
+        }
 
-        // void* fragmentUniforms = nullptr;
-        // result = sceGxmReserveFragmentDefaultUniformBuffer(internal->context, &fragmentUniforms);
-        // if (result < 0) {
-        //     error_set("sceGxmReserveFragmentDefaultUniformBuffer: 0x%08X", result);
-        //     return false;
-        // }
-        // float rgba[4] {
-        //     color.r,
-        //     color.g,
-        //     color.b,
-        //     color.a
-        // };
-        // result = sceGxmSetUniformDataF(fragmentUniforms, pipeline->internal->fragmentParameters[0], 0, 4, rgba);
-        // if (result < 0) {
-        //     error_set("sceGxmSetUniformDataF: 0x%08X", result);
-        //     return false;
-        // }
+        void* fragmentUniforms = nullptr;
+        result = sceGxmReserveFragmentDefaultUniformBuffer(internal->context, &fragmentUniforms);
+        if (result < 0) {
+            error_set("sceGxmReserveFragmentDefaultUniformBuffer: 0x%08X", result);
+            return false;
+        }
+        float rgba[4] {
+            color.r,
+            color.g,
+            color.b,
+            color.a
+        };
+        result = sceGxmSetUniformDataF(fragmentUniforms, pipeline->internal->fragmentParameters[0], 0, 4, rgba);
+        if (result < 0) {
+            error_set("sceGxmSetUniformDataF: 0x%08X", result);
+            return false;
+        }
 
         // sceGxmSetVertexStream(internal->context, 0, internal->quadVertexBuffer->internal->mem);
 
@@ -148,80 +148,52 @@ namespace ryo {
         //     return false;
         // }
 
-        static const PositionVertex testVertices[] = {
-            {-0.5f, -0.5f, 0.0f},
-            { 0.5f, -0.5f, 0.0f},
-            {-0.5f,  0.5f, 0.0f},
-            { 0.5f,  0.5f, 0.0f}
-        };
+        // static const PositionVertex testVertices[] = {
+        //     {-0.5f, -0.5f, 0.0f},
+        //     { 0.5f, -0.5f, 0.0f},
+        //     {-0.5f,  0.5f, 0.0f},
+        //     { 0.5f,  0.5f, 0.0f}
+        // };
 
-        static const uint16_t testIndices[] = {
-            0, 1, 2,
-            2, 1, 3
-        };
+        // static const uint16_t testIndices[] = {
+        //     0, 1, 2,
+        //     2, 1, 3
+        // };
 
-        void* testVB = nullptr;
-        SceUID testVBId = -1;
+        // void* testVB = nullptr;
+        // SceUID testVBId = -1;
 
-        _memory_alloc_gpu_rw(
-            "test_vb",
-            sizeof(testVertices),
-            _MEMORY_TYPE_UNCACHE,
-            testVB,
-            testVBId
-        );
+        // _memory_alloc_gpu_rw(
+        //     "test_vb",
+        //     sizeof(testVertices),
+        //     _MEMORY_TYPE_UNCACHE,
+        //     testVB,
+        //     testVBId
+        // );
 
-        memcpy(testVB, testVertices, sizeof(testVertices));
+        // memcpy(testVB, testVertices, sizeof(testVertices));
 
-        void* testIB = nullptr;
-        SceUID testIBId = -1;
+        // void* testIB = nullptr;
+        // SceUID testIBId = -1;
 
-        _memory_alloc_gpu_rw(
-            "test_ib",
-            sizeof(testIndices),
-            _MEMORY_TYPE_UNCACHE,
-            testIB,
-            testIBId
-        );
+        // _memory_alloc_gpu_rw(
+        //     "test_ib",
+        //     sizeof(testIndices),
+        //     _MEMORY_TYPE_UNCACHE,
+        //     testIB,
+        //     testIBId
+        // );
 
-        memcpy(testIB, testIndices, sizeof(testIndices));
+        // memcpy(testIB, testIndices, sizeof(testIndices));
 
-        int result = sceGxmSetVertexStream(
-            internal->context,
-            0,
-            testVB
-        );
-
-        if (result < 0) {
-            error_set("sceGxmSetVertexStream error code: %d", result);
-            return false;
-        }
-
-        result = sceGxmDraw(
-            internal->context,
-            SCE_GXM_PRIMITIVE_TRIANGLES,
-            SCE_GXM_INDEX_FORMAT_U16,
-            testIB,
-            6
-        );
-        if (result < 0) {
-            error_set("sceGxmDraw error code: %d", result);
-            return false;
-        }
-
-        // if (internal->quadIndexBuffer == nullptr || internal->quadIndexBuffer->internal->mem == nullptr) {
-        //     error_set("Quad index buffer memory is null!");
-        //     return false;
-        // }
-
-        // result = sceGxmSetVertexStream(
+        // int result = sceGxmSetVertexStream(
         //     internal->context,
         //     0,
-        //     internal->quadVertexBuffer->internal->mem
+        //     testVB
         // );
 
         // if (result < 0) {
-        //     error_set("sceGxmSetVertexStream error code: 0x%08X", result);
+        //     error_set("sceGxmSetVertexStream error code: %d", result);
         //     return false;
         // }
 
@@ -229,33 +201,61 @@ namespace ryo {
         //     internal->context,
         //     SCE_GXM_PRIMITIVE_TRIANGLES,
         //     SCE_GXM_INDEX_FORMAT_U16,
-        //     internal->quadIndexBuffer->internal->mem,
+        //     testIB,
         //     6
         // );
-
         // if (result < 0) {
-        //     static bool logged = false;
-        //     if (!logged) {
-        //         FILE* dbgLog = fopen("ux0:data/ryolib-draw-debug.log", "w");
-        //         if (dbgLog) {
-        //             fprintf(dbgLog, "=== GXM Draw Debug Info ===\n");
-        //             fprintf(dbgLog, "Context: %p\n", internal->context);
-        //             fprintf(dbgLog, "VertexProgram: %p\n", pipeline->internal->vertexProgram);
-        //             fprintf(dbgLog, "FragmentProgram: %p\n", pipeline->internal->fragmentProgram);
-        //             fprintf(dbgLog, "VertexParam[0]: %p\n", pipeline->internal->vertexParameters ? pipeline->internal->vertexParameters[0] : nullptr);
-        //             fprintf(dbgLog, "FragmentParam[0]: %p\n", pipeline->internal->fragmentParameters ? pipeline->internal->fragmentParameters[0] : nullptr);
-        //             fprintf(dbgLog, "VertexUniforms: %p\n", vertexUniforms);
-        //             fprintf(dbgLog, "FragmentUniforms: %p\n", fragmentUniforms);
-        //             fprintf(dbgLog, "QuadVB mem: %p\n", internal->quadVertexBuffer ? internal->quadVertexBuffer->internal->mem : nullptr);
-        //             fprintf(dbgLog, "QuadIB mem: %p\n", internal->quadIndexBuffer ? internal->quadIndexBuffer->internal->mem : nullptr);
-        //             fprintf(dbgLog, "sceGxmDraw result: 0x%08X (%d)\n", result, result);
-        //             fclose(dbgLog);
-        //         }
-        //         logged = true;
-        //     }
-        //     error_set("sceGxmDraw error code: 0x%08X", result);
+        //     error_set("sceGxmDraw error code: %d", result);
         //     return false;
         // }
+
+        if (internal->quadIndexBuffer == nullptr || internal->quadIndexBuffer->internal->mem == nullptr) {
+            error_set("Quad index buffer memory is null!");
+            return false;
+        }
+
+        result = sceGxmSetVertexStream(
+            internal->context,
+            0,
+            internal->quadVertexBuffer->internal->mem
+        );
+
+        if (result < 0) {
+            error_set("sceGxmSetVertexStream error code: 0x%08X", result);
+            return false;
+        }
+
+        result = sceGxmDraw(
+            internal->context,
+            SCE_GXM_PRIMITIVE_TRIANGLES,
+            SCE_GXM_INDEX_FORMAT_U16,
+            internal->quadIndexBuffer->internal->mem,
+            6
+        );
+
+        if (result < 0) {
+            static bool logged = false;
+            if (!logged) {
+                FILE* dbgLog = fopen("ux0:data/ryolib-draw-debug.log", "w");
+                if (dbgLog) {
+                    fprintf(dbgLog, "=== GXM Draw Debug Info ===\n");
+                    fprintf(dbgLog, "Context: %p\n", internal->context);
+                    fprintf(dbgLog, "VertexProgram: %p\n", pipeline->internal->vertexProgram);
+                    fprintf(dbgLog, "FragmentProgram: %p\n", pipeline->internal->fragmentProgram);
+                    fprintf(dbgLog, "VertexParam[0]: %p\n", pipeline->internal->vertexParameters ? pipeline->internal->vertexParameters[0] : nullptr);
+                    fprintf(dbgLog, "FragmentParam[0]: %p\n", pipeline->internal->fragmentParameters ? pipeline->internal->fragmentParameters[0] : nullptr);
+                    fprintf(dbgLog, "VertexUniforms: %p\n", vertexUniforms);
+                    fprintf(dbgLog, "FragmentUniforms: %p\n", fragmentUniforms);
+                    fprintf(dbgLog, "QuadVB mem: %p\n", internal->quadVertexBuffer ? internal->quadVertexBuffer->internal->mem : nullptr);
+                    fprintf(dbgLog, "QuadIB mem: %p\n", internal->quadIndexBuffer ? internal->quadIndexBuffer->internal->mem : nullptr);
+                    fprintf(dbgLog, "sceGxmDraw result: 0x%08X (%d)\n", result, result);
+                    fclose(dbgLog);
+                }
+                logged = true;
+            }
+            error_set("sceGxmDraw error code: 0x%08X", result);
+            return false;
+        }
 
         return true;
     }

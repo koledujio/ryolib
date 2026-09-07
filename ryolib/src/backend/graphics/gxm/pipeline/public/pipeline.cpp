@@ -51,27 +51,27 @@ namespace ryo {
                 if (positionParam == nullptr) return false;
                 uint32_t positionReg = sceGxmProgramParameterGetResourceIndex(positionParam);
 
-                // const SceGxmProgramParameter* mvpParam = sceGxmProgramFindParameterByName(vertexProgramData, "MVP");
-                // if (mvpParam == nullptr) return false;
+                const SceGxmProgramParameter* mvpParam = sceGxmProgramFindParameterByName(vertexProgramData, "MVP");
+                if (mvpParam == nullptr) return false;
 
-                // const SceGxmProgramParameter* colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "Color");
-                // if (colorParam == nullptr) return false;
+                const SceGxmProgramParameter* colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "Color");
+                if (colorParam == nullptr) return false;
 
                 registers = new uint32_t[1];
                 registers[0] = positionReg;
                 registerCount = 1;
 
-                // vertexParameters = new const SceGxmProgramParameter*[1];
-                // vertexParameters[0] = mvpParam;
-                // vertexParameterCount = 1;
-                vertexParameters = nullptr;
-                vertexParameterCount = 0;
+                vertexParameters = new const SceGxmProgramParameter*[1];
+                vertexParameters[0] = mvpParam;
+                vertexParameterCount = 1;
+                // vertexParameters = nullptr;
+                // vertexParameterCount = 0;
 
-                // fragmentParameters = new const SceGxmProgramParameter*[1];
-                // fragmentParameters[0] = colorParam;
-                // fragmentParameterCount = 1;
-                fragmentParameters = nullptr;
-                fragmentParameterCount = 0;
+                fragmentParameters = new const SceGxmProgramParameter*[1];
+                fragmentParameters[0] = colorParam;
+                fragmentParameterCount = 1;
+                // fragmentParameters = nullptr;
+                // fragmentParameterCount = 0;
 
                 // fprintf(log, "MVP param: %p\n", mvpParam);
                 // fprintf(log, "MVP resource index: %u\n", sceGxmProgramParameterGetResourceIndex(mvpParam));

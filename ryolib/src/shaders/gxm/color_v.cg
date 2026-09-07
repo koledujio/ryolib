@@ -6,11 +6,10 @@ struct VertexOutput {
     float4 position : POSITION;
 };
 
-//float4x4 MVP;
+float4x4 MVP;
 
 VertexOutput main(VertexInput input) {
     VertexOutput output;
-    //output.position = mul(MVP, float4(input.position, 1.0));
-    output.position = float4(input.position, 1.0);
+    output.position = mul(MVP, float4(input.position, 1.0));
     return output;
 }
