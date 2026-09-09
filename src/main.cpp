@@ -63,6 +63,17 @@ int main_vita() {
     fprintf(log, "Renderer created.\n");
     fflush(log);
 
+    int mikuWidth, mikuHeight;
+    ryo::Texture* hatsuneMikuTexture = ryo::image_load_texture(renderer, "assets/hatsune-miku.png", mikuWidth, mikuHeight);
+    if (hatsuneMikuTexture == nullptr || !hatsuneMikuTexture->valid()) {
+        fprintf(log, "Failed to load texture! %s\n", ryo::error_get());
+        fflush(log);
+        return 0;
+    }
+
+    fprintf(log, "Texture loaded and created.\n");
+    fflush(log);
+
     ryo::Camera camera2d = {};
     camera2d.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
     camera2d.orthographicSize = 720.0f;

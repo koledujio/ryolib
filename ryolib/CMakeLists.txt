@@ -74,8 +74,8 @@ elseif(VITA)
     include(text/StubBackend)
     setup_stub_text_backend(ryolib)
 
-    include(image/StubBackend)
-    setup_stub_image_backend(ryolib)
+    include(image/StbImageBackend)
+    setup_stb_image_backend(ryolib)
 
     include(audio/SDLMixerBackend)
     setup_sdl_mixer_backend(ryolib)

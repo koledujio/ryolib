@@ -73,7 +73,18 @@ namespace ryo {
     };
 
     struct InternalRenderTarget {};
-    struct InternalTexture {};
+
+    struct InternalTexture {
+        const Renderer* renderer = nullptr;
+
+        SceGxmTexture texture;
+
+        void* mem = nullptr;
+        SceUID memId = -1;
+
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
 
     struct InternalBuffer {
         void* mem = nullptr;
