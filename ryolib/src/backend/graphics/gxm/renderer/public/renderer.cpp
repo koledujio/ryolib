@@ -409,7 +409,7 @@ namespace ryo {
             2, 1, 3
         };
 
-        internal->quadVertexBuffer  = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
+        internal->quadVertexBuffer = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
         if (!internal->quadVertexBuffer->valid()) {
             RYO_ASSERT_VOID(false, "Failed to create quad vertex buffer");
             delete internal->quadVertexBuffer;
@@ -429,6 +429,42 @@ namespace ryo {
 
             FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
             fprintf(log, "Failed to create index quad buffer %s", error_get());
+            fflush(log);
+            fclose(log);
+        }
+
+        static const PositionUVVertex quadVerticesUV[] = {
+            { {-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f} },
+            { { 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f} },
+            { {-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f} },
+            { { 0.5f,  0.5f, 0.0f}, {1.0f, 0.0f} }
+        };
+
+        static const uint16_t quadIndicesUV[] = {
+            0, 1, 2,
+            2, 1, 3
+        };
+
+        internal->quadVertexBufferUV = new Buffer(*this, quadVerticesUV, sizeof(quadVerticesUV), BUFFER_TYPE_VERTEX);
+        if (!internal->quadVertexBufferUV->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create uv quad vertex buffer");
+            delete internal->quadVertexBufferUV;
+            internal->quadVertexBufferUV = nullptr;
+
+            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
+            fprintf(log, "Failed to create uv vertex quad buffer %s", error_get());
+            fflush(log);
+            fclose(log);
+        }
+
+        internal->quadIndexBufferUV = new Buffer(*this, quadIndicesUV, sizeof(quadIndicesUV), BUFFER_TYPE_INDEX);
+        if (!internal->quadIndexBufferUV->valid()) {
+            RYO_ASSERT_VOID(false, "Failed to create uv quad index buffer");
+            delete internal->quadIndexBufferUV;
+            internal->quadIndexBufferUV = nullptr;
+
+            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
+            fprintf(log, "Failed to create uv index quad buffer %s", error_get());
             fflush(log);
             fclose(log);
         }

@@ -64,24 +64,10 @@ namespace ryo {
                 vertexParameters = new const SceGxmProgramParameter*[1];
                 vertexParameters[0] = mvpParam;
                 vertexParameterCount = 1;
-                // vertexParameters = nullptr;
-                // vertexParameterCount = 0;
 
                 fragmentParameters = new const SceGxmProgramParameter*[1];
                 fragmentParameters[0] = colorParam;
                 fragmentParameterCount = 1;
-                // fragmentParameters = nullptr;
-                // fragmentParameterCount = 0;
-
-                // fprintf(log, "MVP param: %p\n", mvpParam);
-                // fprintf(log, "MVP resource index: %u\n", sceGxmProgramParameterGetResourceIndex(mvpParam));
-                // fprintf(log, "MVP type: %d\n", sceGxmProgramParameterGetType(mvpParam));
-                // fprintf(log, "MVP component count: %u\n", sceGxmProgramParameterGetComponentCount(mvpParam));
-                // fprintf(log, "Color param: %p\n", colorParam);
-                // fprintf(log, "Color resource index: %u\n", sceGxmProgramParameterGetResourceIndex(colorParam));
-                // fprintf(log, "Color type: %d\n", sceGxmProgramParameterGetType(colorParam));
-                // fprintf(log, "Color component count: %u\n", sceGxmProgramParameterGetComponentCount(colorParam));
-                // fflush(log);
 
                 return true;
             }
@@ -96,16 +82,28 @@ namespace ryo {
                 uint32_t positionReg = sceGxmProgramParameterGetResourceIndex(positionParam);
                 uint32_t uvReg = sceGxmProgramParameterGetResourceIndex(uvParam);
 
+                const SceGxmProgramParameter* mvpParam = sceGxmProgramFindParameterByName(vertexProgramData, "MVP");
+                if (mvpParam == nullptr) return false;
+
+                const SceGxmProgramParameter* colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "Color");
+                if (colorParam == nullptr) return false;
+
+                const SceGxmProgramParameter* textureParam = sceGxmProgramFindParameterByName(fragmentProgramData, "MainTexture");
+                if (textureParam == nullptr) return false;
+
                 registers = new uint32_t[2];
                 registers[0] = positionReg;
                 registers[1] = uvReg;
                 registerCount = 2;
 
-                vertexParameters = nullptr;
-                vertexParameterCount = 0;
+                vertexParameters = new const SceGxmProgramParameter*[1];
+                vertexParameters[0] = mvpParam;
+                vertexParameterCount = 1;
 
-                fragmentParameters = nullptr;
-                fragmentParameterCount = 0;
+                fragmentParameters = new const SceGxmProgramParameter*[2];
+                fragmentParameters[0] = colorParam;
+                fragmentParameters[1] = textureParam;
+                fragmentParameterCount = 2;
 
                 return true;
             }

@@ -4,7 +4,9 @@
 
 namespace ryo {
     Texture::Texture(const Renderer& renderer, const void* pixels, unsigned int width, unsigned int height) {
-        const uint32_t size = width * height * 4;
+        const uint32_t alignedWidth = (width + 7) & ~7;
+        const uint32_t stride = alignedWidth * 4;
+        const uint32_t size = stride * height;
 
         void* mem = nullptr;
         SceUID memId = -1;
@@ -20,7 +22,11 @@ namespace ryo {
             return;
         }
 
-        memcpy(mem, pixels, size);
+        const uint8_t* src = static_cast<const uint8_t*>(pixels);
+        uint8_t* dst = static_cast<uint8_t*>(mem);
+        for (unsigned int y = 0; y < height; ++y) {
+            memcpy(dst + y * stride, src + y * width * 4, width * 4);
+        }
 
         SceGxmTexture texture;
 
@@ -46,6 +52,8 @@ namespace ryo {
         intern->memId = memId;
         intern->width = width;
         intern->height = height;
+
+        internal = intern;
     }
 
     Texture::Texture(InternalTexture* internal) {
@@ -65,5 +73,8 @@ namespace ryo {
     Texture::Texture(Texture&&) {}
     Texture& Texture::operator=(Texture&&) {return *this;}
 
-    bool Texture::valid() const {return true;}
+    bool Texture::valid() const {
+        return internal != nullptr &&
+               internal->mem != nullptr;
+    }
 }

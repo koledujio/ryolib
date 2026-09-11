@@ -63,6 +63,9 @@ namespace ryo {
         Buffer* quadVertexBuffer = nullptr;
         Buffer* quadIndexBuffer = nullptr;
 
+        Buffer* quadVertexBufferUV = nullptr;
+        Buffer* quadIndexBufferUV = nullptr;
+
         // Frame
         bool inFrame = false;
         bool inPass = false;

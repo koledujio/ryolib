@@ -91,6 +91,8 @@ int main_vita() {
     settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
 
     ryo::Matrix4 scaling = ryo::Matrix4::scaling(200.0f, 200.0f, 1.0f);
+
+    ryo::Matrix4 miku = ryo::Matrix4::scaling(400.0f, 400.0f, 1.0f) * ryo::Matrix4::translation(-200.0f, 0.0f, 0.0f);
     
     ryo::Gamepad* gamepad = nullptr;
     int gamepadId = -1;
@@ -115,6 +117,7 @@ int main_vita() {
                     } else {
                         gamepadId = evt.data.pad.id;
                     }
+                    break;
                 
                 case ryo::EVENT_PAD_REMOVED:
                     if (gamepadId == evt.data.pad.id) {
@@ -124,6 +127,7 @@ int main_vita() {
                         gamepad = nullptr;
                         gamepadId = -1;
                     }
+                    break;
                 
                 case ryo::EVENT_PAD_BUTTON_DOWN:
                     if (gamepadId == evt.data.pad.id) {
@@ -131,6 +135,7 @@ int main_vita() {
                             shouldQuit = true;
                         }
                     }
+                    break;
 
                 default:
                     break;
@@ -143,6 +148,11 @@ int main_vita() {
 
         if (!renderer.draw_rect_color(clearColor, scaling, &settings)) {
             fprintf(log, "Failed to draw colored rect: %s\n", ryo::error_get());
+            fflush(log);
+        }
+
+        if (!renderer.draw_rect_texture(*hatsuneMikuTexture, ryo::SAMPLER_TYPE_LINEAR, clearColor, scaling, &settings)) {
+            fprintf(log, "Failed to draw textured rect: %s\n", ryo::error_get());
             fflush(log);
         }
 

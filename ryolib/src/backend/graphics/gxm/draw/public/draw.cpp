@@ -140,75 +140,6 @@ namespace ryo {
             return false;
         }
 
-        // sceGxmSetVertexStream(internal->context, 0, internal->quadVertexBuffer->internal->mem);
-
-        // int result = sceGxmDraw(internal->context, SCE_GXM_PRIMITIVE_TRIANGLES, SCE_GXM_INDEX_FORMAT_U32, internal->quadIndexBuffer->internal->mem, 6);
-        // if (result < 0) {
-        //     error_set("GXM error code: %d", result);
-        //     return false;
-        // }
-
-        // static const PositionVertex testVertices[] = {
-        //     {-0.5f, -0.5f, 0.0f},
-        //     { 0.5f, -0.5f, 0.0f},
-        //     {-0.5f,  0.5f, 0.0f},
-        //     { 0.5f,  0.5f, 0.0f}
-        // };
-
-        // static const uint16_t testIndices[] = {
-        //     0, 1, 2,
-        //     2, 1, 3
-        // };
-
-        // void* testVB = nullptr;
-        // SceUID testVBId = -1;
-
-        // _memory_alloc_gpu_rw(
-        //     "test_vb",
-        //     sizeof(testVertices),
-        //     _MEMORY_TYPE_UNCACHE,
-        //     testVB,
-        //     testVBId
-        // );
-
-        // memcpy(testVB, testVertices, sizeof(testVertices));
-
-        // void* testIB = nullptr;
-        // SceUID testIBId = -1;
-
-        // _memory_alloc_gpu_rw(
-        //     "test_ib",
-        //     sizeof(testIndices),
-        //     _MEMORY_TYPE_UNCACHE,
-        //     testIB,
-        //     testIBId
-        // );
-
-        // memcpy(testIB, testIndices, sizeof(testIndices));
-
-        // int result = sceGxmSetVertexStream(
-        //     internal->context,
-        //     0,
-        //     testVB
-        // );
-
-        // if (result < 0) {
-        //     error_set("sceGxmSetVertexStream error code: %d", result);
-        //     return false;
-        // }
-
-        // result = sceGxmDraw(
-        //     internal->context,
-        //     SCE_GXM_PRIMITIVE_TRIANGLES,
-        //     SCE_GXM_INDEX_FORMAT_U16,
-        //     testIB,
-        //     6
-        // );
-        // if (result < 0) {
-        //     error_set("sceGxmDraw error code: %d", result);
-        //     return false;
-        // }
-
         if (internal->quadIndexBuffer == nullptr || internal->quadIndexBuffer->internal->mem == nullptr) {
             error_set("Quad index buffer memory is null!");
             return false;
@@ -234,25 +165,6 @@ namespace ryo {
         );
 
         if (result < 0) {
-            static bool logged = false;
-            if (!logged) {
-                FILE* dbgLog = fopen("ux0:data/ryolib-draw-debug.log", "w");
-                if (dbgLog) {
-                    fprintf(dbgLog, "=== GXM Draw Debug Info ===\n");
-                    fprintf(dbgLog, "Context: %p\n", internal->context);
-                    fprintf(dbgLog, "VertexProgram: %p\n", pipeline->internal->vertexProgram);
-                    fprintf(dbgLog, "FragmentProgram: %p\n", pipeline->internal->fragmentProgram);
-                    fprintf(dbgLog, "VertexParam[0]: %p\n", pipeline->internal->vertexParameters ? pipeline->internal->vertexParameters[0] : nullptr);
-                    fprintf(dbgLog, "FragmentParam[0]: %p\n", pipeline->internal->fragmentParameters ? pipeline->internal->fragmentParameters[0] : nullptr);
-                    fprintf(dbgLog, "VertexUniforms: %p\n", vertexUniforms);
-                    fprintf(dbgLog, "FragmentUniforms: %p\n", fragmentUniforms);
-                    fprintf(dbgLog, "QuadVB mem: %p\n", internal->quadVertexBuffer ? internal->quadVertexBuffer->internal->mem : nullptr);
-                    fprintf(dbgLog, "QuadIB mem: %p\n", internal->quadIndexBuffer ? internal->quadIndexBuffer->internal->mem : nullptr);
-                    fprintf(dbgLog, "sceGxmDraw result: 0x%08X (%d)\n", result, result);
-                    fclose(dbgLog);
-                }
-                logged = true;
-            }
             error_set("sceGxmDraw error code: 0x%08X", result);
             return false;
         }
@@ -260,6 +172,141 @@ namespace ryo {
         return true;
     }
 
-    bool Renderer::draw_rect_texture(const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {return true;}
+    bool Renderer::draw_rect_texture(const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
+        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
+
+        const Pipeline* pipeline = nullptr;
+        if (settings != nullptr && settings->pipelineOverride != nullptr && settings->pipelineOverride->valid())
+            pipeline = settings->pipelineOverride;
+        else {
+            pipeline = internal->defaultTexturePipeline;
+            if (pipeline == nullptr || !pipeline->valid())
+                return false;
+        }
+
+        sceGxmSetVertexProgram(internal->context, pipeline->internal->vertexProgram);
+        sceGxmSetFragmentProgram(internal->context, pipeline->internal->fragmentProgram);
+
+        sceGxmSetCullMode(internal->context, SCE_GXM_CULL_NONE);
+        sceGxmSetFrontStencilRef(internal->context, 0);
+        sceGxmSetBackStencilRef(internal->context, 0);
+
+        int width = internal->width;
+        int height = internal->height;
+
+        Matrix4 mvp;
+        if (settings != nullptr && settings->camera != nullptr) {
+            float aspect = static_cast<float>(width) / static_cast<float>(height);
+
+            Matrix4 projection;
+            switch (settings->camera->projectionType) {
+                case CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC: {
+                    float halfHeight = settings->camera->orthographicSize * 0.5f;
+                    float halfWidth = halfHeight * aspect;
+
+                    projection = Matrix4::orthographic(-halfWidth, halfWidth, -halfHeight, halfHeight, settings->camera->nearPlane, settings->camera->farPlane);
+                    break;
+                }
+
+                case CAMERA_PROJECTION_TYPE_PERSPECTIVE:
+                    projection = Matrix4::perspective(settings->camera->fovY, aspect, settings->camera->nearPlane, settings->camera->farPlane);
+                    break;
+            }
+
+            Matrix4 view = Matrix4::look_at(settings->camera->position, settings->camera->target, settings->camera->up);
+
+            mvp = projection * view * matrix;
+        } else
+            mvp = matrix;
+        
+        mvp = mvp.transpose();
+
+        void* vertexUniforms = nullptr;
+        int vertexUniformResult = sceGxmReserveVertexDefaultUniformBuffer(internal->context, &vertexUniforms);
+        if (vertexUniformResult < 0) {
+            error_set("sceGxmReserveVertexDefaultUniformBuffer 0x%08X", vertexUniformResult);
+            return false;
+        }
+        vertexUniformResult = sceGxmSetUniformDataF(vertexUniforms, pipeline->internal->vertexParameters[0], 0, 16, mvp.m);
+        if (vertexUniformResult < 0) {
+            error_set("sceGxmSetUniformDataF: 0x%08X", vertexUniformResult);
+            return false;
+        }
+
+        void* fragmentUniforms = nullptr;
+        int fragmentUniformResult = sceGxmReserveFragmentDefaultUniformBuffer(internal->context, &fragmentUniforms);
+        if (fragmentUniformResult < 0) {
+            error_set("sceGxmReserveFragmentDefaultUniformBuffer: 0x%08X", fragmentUniformResult);
+            return false;
+        }
+        float rgba[4] {
+            color.r,
+            color.g,
+            color.b,
+            color.a
+        };
+        fragmentUniformResult = sceGxmSetUniformDataF(fragmentUniforms, pipeline->internal->fragmentParameters[0], 0, 4, rgba);
+        if (fragmentUniformResult < 0) {
+            error_set("sceGxmSetUniformDataF: 0x%08X", fragmentUniformResult);
+            return false;
+        }
+
+        SceGxmTexture* gxmTexture = &texture.internal->texture;
+        switch (samplerType) {
+            case SAMPLER_TYPE_NEAREST:
+                sceGxmTextureSetMinFilter(gxmTexture, SCE_GXM_TEXTURE_FILTER_POINT);
+                sceGxmTextureSetMagFilter(gxmTexture, SCE_GXM_TEXTURE_FILTER_POINT);
+                break;
+
+            case SAMPLER_TYPE_LINEAR:
+                sceGxmTextureSetMinFilter(gxmTexture, SCE_GXM_TEXTURE_FILTER_LINEAR);
+                sceGxmTextureSetMagFilter(gxmTexture, SCE_GXM_TEXTURE_FILTER_LINEAR);
+                break;
+        }
+        sceGxmTextureSetUAddrMode(gxmTexture, SCE_GXM_TEXTURE_ADDR_CLAMP);
+        sceGxmTextureSetVAddrMode(gxmTexture, SCE_GXM_TEXTURE_ADDR_CLAMP);
+
+        int samplerResult = sceGxmSetFragmentTexture(internal->context, 0, gxmTexture);
+        if (samplerResult < 0) {
+            error_set("sceGxmSetFragmentTexture: 0x%08X", samplerResult);
+            return false;
+        }
+
+        RYO_ENSURE(
+            internal->quadVertexBufferUV != nullptr &&
+            internal->quadVertexBufferUV->internal->mem != nullptr,
+            false,
+            "Quad UV vertex buffer is null"
+        );
+        RYO_ENSURE(
+            internal->quadIndexBufferUV != nullptr &&
+            internal->quadIndexBufferUV->internal->mem != nullptr,
+            false,
+            "Quad UV index buffer is null"
+        );
+
+        int vertexStreamResult = sceGxmSetVertexStream(internal->context, 0, internal->quadVertexBufferUV->internal->mem);
+        if (vertexStreamResult < 0) {
+            error_set("sceGxmSetVertexStream: 0x%08X", vertexStreamResult);
+            return false;
+        }
+
+        int drawResult = sceGxmDraw(
+            internal->context,
+            SCE_GXM_PRIMITIVE_TRIANGLES,
+            SCE_GXM_INDEX_FORMAT_U16,
+            internal->quadIndexBufferUV->internal->mem,
+            6
+        );
+        if (drawResult < 0) {
+            error_set("sceGxmDraw: 0x%08X", drawResult);
+            return false;
+        }
+
+        return true;
+    }
+
     bool Renderer::draw_mesh_texture(const Buffer& vertexBuffer, const Buffer& indexBuffer, uint32_t indexCount, const Texture& texture, SamplerType samplerType, const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {return true;}
 }

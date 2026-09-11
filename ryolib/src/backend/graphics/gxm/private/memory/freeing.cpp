@@ -4,7 +4,7 @@
 
 namespace ryo {
     void _memory_free(SceUID memId) {
-        if (memId < 0)
+        if (memId >= 0)
             sceKernelFreeMemBlock(memId);
     }
 
