@@ -128,6 +128,8 @@ namespace ryo {
     };
 
     struct RendererConfig {
+        // the native window handle is ignored on the vita
+        // the width and height on the vita are hardcoded to be 960x544
         void* nativeWindowHandle;
         int width;
         int height;

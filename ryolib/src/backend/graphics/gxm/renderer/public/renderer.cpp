@@ -1,138 +1,12 @@
-#include "../../private.h"
-
-#include <psp2/gxm.h>
-#include <psp2/display.h>
-#include <psp2/kernel/sysmem.h>
+#include "../private.h"
 
 #include <stdlib.h>
 #include <cstdio>
 #include <cstddef>
 #include <cstdlib>
 
-#define DISPLAY_WIDTH 960
-#define DISPLAY_HEIGHT 544
-#define DISPLAY_STRIDE_IN_PIXELS 1024
-
 namespace ryo {
-    static bool g_gxmInitialized = false;
-    static void _renderer_destroy(InternalRenderer*& intern) {
-        if (!intern)
-            return;
-
-        if (intern->defaultColorPipeline) {
-            delete intern->defaultColorPipeline;
-            intern->defaultColorPipeline = nullptr;
-        }
-
-        if (intern->defaultTexturePipeline) {
-            delete intern->defaultTexturePipeline;
-            intern->defaultTexturePipeline = nullptr;
-        }
-
-        if (intern->depthMem) {
-            sceGxmUnmapMemory(intern->depthMem);
-            intern->depthMem = nullptr;
-        }
-
-        if (intern->depthMemId >= 0) {
-            sceKernelFreeMemBlock(intern->depthMemId);
-        }
-
-        intern->depthSurface = {};
-
-        if (intern->renderTarget) {
-            sceGxmDestroyRenderTarget(intern->renderTarget);
-            intern->renderTarget = nullptr;
-        }
-
-        if (intern->context)
-            sceGxmFinish(intern->context);
-
-        if (intern->shaderPatcher) {
-            sceGxmShaderPatcherDestroy(intern->shaderPatcher);
-            intern->shaderPatcher = nullptr;
-        }
-
-        if (intern->context) {
-            sceDisplayWaitVblankStart();
-
-            sceGxmDestroyContext(intern->context);
-            intern->context = nullptr;
-        }
-
-        for (_DisplayBuffer& buffer : intern->displayBuffers) {
-            if (buffer.sync) {
-                sceGxmSyncObjectDestroy(buffer.sync);
-                buffer.sync = nullptr;
-            }
-
-            _memory_free_gpu(buffer.data, buffer.memId);
-            buffer.data = nullptr;
-            buffer.memId = -1;
-        }
-
-        _memory_free(intern->contextHostMemId);
-        intern->contextHostMemId = -1;
-        intern->contextHostMem = nullptr;
-
-        _memory_free_gpu(intern->vdmRingBuffer, intern->vdmRingBufferId);
-        intern->vdmRingBuffer = nullptr;
-        intern->vdmRingBufferId = -1;
-
-        _memory_free_gpu(intern->vertexRingBuffer, intern->vertexRingBufferId);
-        intern->vertexRingBuffer = nullptr;
-        intern->vertexRingBufferId = -1;
-
-        _memory_free_gpu(intern->fragmentRingBuffer, intern->fragmentRingBufferId);
-        intern->fragmentRingBuffer = nullptr;
-        intern->fragmentRingBufferId = -1;
-
-        _memory_free_usse(_USSE_MEMORY_TYPE_FRAGMENT, intern->fragmentUsseRingBuffer, intern->fragmentUsseRingBufferId);
-        intern->fragmentUsseRingBuffer = nullptr;
-        intern->fragmentUsseRingBufferId = -1;
-        intern->fragmentUsseRingOffset = 0;
-
-        _memory_free_gpu(intern->shaderPatcherBuffer, intern->shaderPatcherBufferId);
-        intern->shaderPatcherBuffer = nullptr;
-        intern->shaderPatcherBufferId = -1;
-
-        _memory_free_usse(_USSE_MEMORY_TYPE_VERTEX, intern->vertexUsse, intern->vertexUsseId);
-        intern->vertexUsse = nullptr;
-        intern->vertexUsseId = -1;
-        intern->vertexUsseOffset = 0;
-
-        _memory_free_usse(_USSE_MEMORY_TYPE_FRAGMENT, intern->fragmentUsse, intern->fragmentUsseId);
-        intern->fragmentUsse = nullptr;
-        intern->fragmentUsseId = -1;
-        intern->fragmentUsseOffset = 0;
-
-        if (g_gxmInitialized) {
-            sceGxmTerminate();
-            g_gxmInitialized = false;
-        }
-
-        delete intern;
-        intern = nullptr;
-    }
-
-    void display_callback(const void* callback_data) {
-        SceDisplayFrameBuf framebuf {};
-        framebuf.size = sizeof(SceDisplayFrameBuf);
-        framebuf.base = *((void **)callback_data);
-        framebuf.pitch = DISPLAY_STRIDE_IN_PIXELS;
-        framebuf.pixelformat = SCE_DISPLAY_PIXELFORMAT_A8B8G8R8;
-        framebuf.width = DISPLAY_WIDTH;
-        framebuf.height = DISPLAY_HEIGHT;
-
-        sceDisplaySetFrameBuf(&framebuf, SCE_DISPLAY_SETBUF_NEXTFRAME);
-
-        sceDisplayWaitVblankStart();
-    }
-
-    static bool _create_display_buffers(InternalRenderer* intern, _DisplayBuffer& buffer) {
-        const size_t size = 4 * intern->stride * intern->height;
-        return _memory_alloc_gpu_rw("ryo_display", size, _MEMORY_TYPE_CDRAM, buffer.data, buffer.memId);
-    }
+    bool g_gxmInitialized = false;
 
     Renderer::Renderer(const RendererConfig& config) {
         if (g_gxmInitialized) {
@@ -140,19 +14,15 @@ namespace ryo {
             return;
         }
 
-        // TODO: Validate config values(as in width and height, nwh is ignored, but can be checked to be nullptr)
-
-        // Allocate InternalRenderer
         InternalRenderer* intern = new InternalRenderer();
-        intern->width = config.width;
-        intern->height = config.height;
+        intern->width = DISPLAY_WIDTH;
+        intern->height = DISPLAY_HEIGHT;
         intern->stride = 1024;
 
-        // Initialize GXM
         SceGxmInitializeParams params = {};
         params.flags = 0;
-        params.displayQueueMaxPendingCount = 2; // use 2 for barely better performance later
-        params.displayQueueCallback = display_callback; // display_callback contains stuff like which framebuffer to show
+        params.displayQueueMaxPendingCount = 2;
+        params.displayQueueCallback = _display_callback;
         params.displayQueueCallbackDataSize = sizeof(void *);
         params.parameterBufferSize = SCE_GXM_DEFAULT_PARAMETER_BUFFER_SIZE;
 
@@ -165,311 +35,20 @@ namespace ryo {
         }
         g_gxmInitialized = true;
         
-        // Allocate display framebuffer memory
-        // Create sync objects
-        // Initialize color surfaces
-        for (int i = 0; i < 3; ++i) {
-            if (!_create_display_buffers(intern, intern->displayBuffers[i])) {
-                _renderer_destroy(intern);
-                error_set("Failed to create display framebuffer %d", i);
-                return;
-            }
-
-            _DisplayBuffer& buffer = intern->displayBuffers[i];
-
-            if (sceGxmColorSurfaceInit(
-                &buffer.surface,
-                SCE_GXM_COLOR_FORMAT_A8B8G8R8,
-                SCE_GXM_COLOR_SURFACE_LINEAR,
-                SCE_GXM_COLOR_SURFACE_SCALE_NONE,
-                SCE_GXM_OUTPUT_REGISTER_SIZE_32BIT,
-                intern->width,
-                intern->height,
-                intern->stride,
-                buffer.data) < 0
-            ) {
-                _renderer_destroy(intern);
-                error_set("Failed to initialize display framebuffer surface %d", i);
-                return;
-            }
-
-            if (sceGxmSyncObjectCreate(&buffer.sync) < 0) {
-                _renderer_destroy(intern);
-                error_set("Failed to create sync object for display framebuffer %d", i);
-                return;
-            }
-        }
-
-        // Create GXM context
-        constexpr size_t HOST_MEM_SIZE = 16 * 1024;
-        constexpr size_t VDM_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_VDM_RING_BUFFER_SIZE;
-        constexpr size_t VERTEX_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_VERTEX_RING_BUFFER_SIZE;
-        constexpr size_t FRAGMENT_RING_BUFFER_SIZE = SCE_GXM_DEFAULT_FRAGMENT_RING_BUFFER_SIZE;
-        constexpr size_t FRAGMENT_USSE_SIZE = SCE_GXM_DEFAULT_FRAGMENT_USSE_RING_BUFFER_SIZE;
-
-        // Host memory (CPU only)
-        if (!_memory_alloc("ryo_gxm_context", HOST_MEM_SIZE, _MEMORY_TYPE_MAIN, intern->contextHostMem, intern->contextHostMemId)) {
+        if (!_initialize_display_buffers(intern) ||
+            !_create_context(intern) ||
+            !_create_shader_patcher(intern) ||
+            !_create_default_render_target(intern) ||
+            !_create_default_depth_stencil(intern)
+        ) {
             _renderer_destroy(intern);
-            error_set("Failed to allocate GXM context memory");
             return;
         }
-
-        // GPU ring buffers
-        if (!_memory_alloc_gpu_rw("ryo_vdm_ring", VDM_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vdmRingBuffer, intern->vdmRingBufferId)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate VDM ring buffer");
-            return;
-        }
-        if (!_memory_alloc_gpu_rw("ryo_vertex_ring", VERTEX_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->vertexRingBuffer, intern->vertexRingBufferId)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate vertex ring buffer");
-            return;
-        }
-        if (!_memory_alloc_gpu_rw("ryo_fragment_ring", FRAGMENT_RING_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->fragmentRingBuffer, intern->fragmentRingBufferId)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate fragment ring buffer");
-            return;
-        }
-
-        // Fragment USSE
-        if (!_memory_alloc_usse("ryo_fragment_ring_usse", FRAGMENT_USSE_SIZE, _USSE_MEMORY_TYPE_FRAGMENT, intern->fragmentUsseRingBuffer, intern->fragmentUsseRingBufferId, intern->fragmentUsseRingOffset)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate fragment USSE ring buffer");
-            return;
-        }
-
-        SceGxmContextParams contextParams = {};
-
-        contextParams.hostMem = intern->contextHostMem;
-        contextParams.hostMemSize = HOST_MEM_SIZE;
-
-        contextParams.vdmRingBufferMem = intern->vdmRingBuffer;
-        contextParams.vdmRingBufferMemSize = VDM_RING_BUFFER_SIZE;
-
-        contextParams.vertexRingBufferMem = intern->vertexRingBuffer;
-        contextParams.vertexRingBufferMemSize = VERTEX_RING_BUFFER_SIZE;
-
-        contextParams.fragmentRingBufferMem = intern->fragmentRingBuffer;
-        contextParams.fragmentRingBufferMemSize = FRAGMENT_RING_BUFFER_SIZE;
-
-        contextParams.fragmentUsseRingBufferMem = intern->fragmentUsseRingBuffer;
-        contextParams.fragmentUsseRingBufferMemSize = FRAGMENT_USSE_SIZE;
-        contextParams.fragmentUsseRingBufferOffset = intern->fragmentUsseRingOffset;
-
-        if (sceGxmCreateContext(&contextParams, &intern->context) < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to create GXM context");
-            return;
-        }
-
-        // Shader patcher
-        constexpr size_t PATCHER_BUFFER_SIZE = 64 * 1024;
-        constexpr size_t PATCHER_VERTEX_USSE_SIZE = 64 * 1024;
-        constexpr size_t PATCHER_FRAGMENT_USSE_SIZE = 64 * 1024;
-
-        if (!_memory_alloc_gpu_rw("ryo_shader_patcher", PATCHER_BUFFER_SIZE, _MEMORY_TYPE_MAIN, intern->shaderPatcherBuffer, intern->shaderPatcherBufferId)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate shader patcher buffer");
-            return;
-        }
-        if (!_memory_alloc_usse("ryo_vertex_usse", PATCHER_VERTEX_USSE_SIZE, _USSE_MEMORY_TYPE_VERTEX, intern->vertexUsse, intern->vertexUsseId, intern->vertexUsseOffset)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate vertex USSE buffer");
-            return;
-        }
-        if (!_memory_alloc_usse("ryo_fragment_usse", PATCHER_FRAGMENT_USSE_SIZE, _USSE_MEMORY_TYPE_FRAGMENT, intern->fragmentUsse, intern->fragmentUsseId, intern->fragmentUsseOffset)) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate fragment USSE buffer");
-            return;
-        }
-
-        SceGxmShaderPatcherParams patcherParams = {};
-        patcherParams.userData = nullptr;
-
-        patcherParams.hostAllocCallback = _memory_patcher_alloc;
-        patcherParams.hostFreeCallback = _memory_patcher_free;
-
-        patcherParams.bufferAllocCallback = nullptr;
-        patcherParams.bufferFreeCallback = nullptr;
-        patcherParams.bufferMem = intern->shaderPatcherBuffer;
-        patcherParams.bufferMemSize = PATCHER_BUFFER_SIZE;
-
-        patcherParams.vertexUsseAllocCallback = nullptr;
-        patcherParams.vertexUsseFreeCallback = nullptr;
-        patcherParams.vertexUsseMem = intern->vertexUsse;
-        patcherParams.vertexUsseMemSize = PATCHER_VERTEX_USSE_SIZE;
-        patcherParams.vertexUsseOffset = intern->vertexUsseOffset;
-
-        patcherParams.fragmentUsseAllocCallback = nullptr;
-        patcherParams.fragmentUsseFreeCallback = nullptr;
-        patcherParams.fragmentUsseMem = intern->fragmentUsse;
-        patcherParams.fragmentUsseMemSize = PATCHER_FRAGMENT_USSE_SIZE;
-        patcherParams.fragmentUsseOffset = intern->fragmentUsseOffset;
-
-        int shaderPatcherCreateResult = sceGxmShaderPatcherCreate(&patcherParams, &intern->shaderPatcher);
-        if (shaderPatcherCreateResult < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to create shader patcher %d", shaderPatcherCreateResult);
-            return;
-        }
-
-        SceGxmRenderTargetParams renderTargetParams = {};
-        renderTargetParams.flags = 0;
-        renderTargetParams.width = config.width;
-        renderTargetParams.height = config.height;
-        renderTargetParams.scenesPerFrame = 1;
-        renderTargetParams.multisampleMode = SCE_GXM_MULTISAMPLE_NONE;
-        renderTargetParams.multisampleLocations = 0;
-        renderTargetParams.driverMemBlock = -1;
-        int renderTargetCreateResult = sceGxmCreateRenderTarget(&renderTargetParams, &intern->renderTarget);
-        if (renderTargetCreateResult < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to create GXM render target %d", renderTargetCreateResult);
-            return;
-        }
-
-        void* depthBuffer = nullptr;
-        const uint32_t depthSize = _memory_align_cdram(intern->stride * intern->height * 4); // D24S8 = 32 bits
-        SceUID depthMemId = sceKernelAllocMemBlock(
-            "depth_stencil",
-            SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW,
-            depthSize,
-            nullptr
-        );
-        if (depthMemId < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate depth stencil memory %d", depthMemId);
-            return;
-        }
-        intern->depthMemId = depthMemId;
-        int depthErr = sceKernelGetMemBlockBase(depthMemId, &depthBuffer);
-        if (depthErr < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate depth stencil memory (2) %d", depthErr);
-            return;
-        }
-        intern->depthMem = depthBuffer;
-        depthErr = sceGxmMapMemory(
-            depthBuffer,
-            depthSize,
-            (SceGxmMemoryAttribFlags)(SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE)
-        );
-        if (depthErr < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to map depth stencil memory %d", depthMemId);
-            return;
-        }
-        SceGxmDepthStencilSurface depthSurface;
-        depthErr = sceGxmDepthStencilSurfaceInit(
-            &depthSurface,
-            SCE_GXM_DEPTH_STENCIL_FORMAT_S8D24,
-            SCE_GXM_DEPTH_STENCIL_SURFACE_TILED,
-            intern->stride,
-            depthBuffer,
-            nullptr
-        );
-        if (depthErr < 0) {
-            _renderer_destroy(intern);
-            error_set("Failed to allocate depth stencil memory (2) %d", depthErr);
-            return;
-        }
-        intern->depthSurface = depthSurface;
 
         internal = intern;
 
-        PipelineDesc defaultColorPipelineDesc = {};
-        defaultColorPipelineDesc.shader = BUILTIN_SHADER_COLOR;
-        defaultColorPipelineDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
-        defaultColorPipelineDesc.blendMode = BLEND_MODE_OPAQUE;
-        internal->defaultColorPipeline = new Pipeline(*this, defaultColorPipelineDesc);
-        if (!internal->defaultColorPipeline->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create default color pipeline");
-            delete internal->defaultColorPipeline;
-            internal->defaultColorPipeline = nullptr;
-        }
-
-        PipelineDesc defaultTexturePipelineDesc = {};
-        defaultTexturePipelineDesc.shader = BUILTIN_SHADER_TEXTURE;
-        defaultTexturePipelineDesc.vertexLayout = VERTEX_LAYOUT_POSITION_UV;
-        defaultTexturePipelineDesc.blendMode = BLEND_MODE_OPAQUE;
-        internal->defaultTexturePipeline = new Pipeline(*this, defaultTexturePipelineDesc);
-        if (!internal->defaultTexturePipeline->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create default texture pipeline");
-            delete internal->defaultTexturePipeline;
-            internal->defaultTexturePipeline = nullptr;
-        }
-
-        static const PositionVertex quadVertices[] = {
-            {-0.5f, -0.5f, 0.0f},
-            { 0.5f, -0.5f, 0.0f},
-            {-0.5f,  0.5f, 0.0f},
-            { 0.5f,  0.5f, 0.0f}
-        };
-
-        static const uint32_t quadIndices[] = {
-            0, 1, 2,
-            2, 1, 3
-        };
-
-        internal->quadVertexBuffer = new Buffer(*this, quadVertices, sizeof(quadVertices), BUFFER_TYPE_VERTEX);
-        if (!internal->quadVertexBuffer->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create quad vertex buffer");
-            delete internal->quadVertexBuffer;
-            internal->quadVertexBuffer = nullptr;
-
-            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
-            fprintf(log, "Failed to create vertex quad buffer %s", error_get());
-            fflush(log);
-            fclose(log);
-        }
-
-        internal->quadIndexBuffer = new Buffer(*this, quadIndices, sizeof(quadIndices), BUFFER_TYPE_INDEX);
-        if (!internal->quadIndexBuffer->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create quad index buffer");
-            delete internal->quadIndexBuffer ;
-            internal->quadIndexBuffer = nullptr;
-
-            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
-            fprintf(log, "Failed to create index quad buffer %s", error_get());
-            fflush(log);
-            fclose(log);
-        }
-
-        static const PositionUVVertex quadVerticesUV[] = {
-            { {-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f} },
-            { { 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f} },
-            { {-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f} },
-            { { 0.5f,  0.5f, 0.0f}, {1.0f, 0.0f} }
-        };
-
-        static const uint32_t quadIndicesUV[] = {
-            0, 1, 2,
-            2, 1, 3
-        };
-
-        internal->quadVertexBufferUV = new Buffer(*this, quadVerticesUV, sizeof(quadVerticesUV), BUFFER_TYPE_VERTEX);
-        if (!internal->quadVertexBufferUV->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create uv quad vertex buffer");
-            delete internal->quadVertexBufferUV;
-            internal->quadVertexBufferUV = nullptr;
-
-            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
-            fprintf(log, "Failed to create uv vertex quad buffer %s", error_get());
-            fflush(log);
-            fclose(log);
-        }
-
-        internal->quadIndexBufferUV = new Buffer(*this, quadIndicesUV, sizeof(quadIndicesUV), BUFFER_TYPE_INDEX);
-        if (!internal->quadIndexBufferUV->valid()) {
-            RYO_ASSERT_VOID(false, "Failed to create uv quad index buffer");
-            delete internal->quadIndexBufferUV;
-            internal->quadIndexBufferUV = nullptr;
-
-            FILE* log = fopen("ux0:data/ryolib-renderer-fail.log", "a");
-            fprintf(log, "Failed to create uv index quad buffer %s", error_get());
-            fflush(log);
-            fclose(log);
-        }
+        _create_default_pipelines(internal, *this);
+        _create_default_buffers(internal, *this);
     }
 
     Renderer::Renderer(const RendererConfig& config, const Renderer& renderer) {
