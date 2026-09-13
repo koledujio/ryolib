@@ -8,7 +8,9 @@ namespace ryo {
     Sound::Sound(const AudioEngine& engine, SoundDesc soundDesc) {
         RYO_ENSURE_VOID(engine.valid(), "Invalid audio engine");
 
-        MIX_Audio* audio = MIX_LoadAudio(engine.internal->mixer, soundDesc.path, false);
+        bool predecode = (soundDesc.loadType != SOUND_LOAD_TYPE_STREAM);
+
+        MIX_Audio* audio = MIX_LoadAudio(engine.internal->mixer, soundDesc.path, predecode);
         if (!audio) {
             error_set("Failed to load audio: %s", SDL_GetError());
             return;
@@ -27,6 +29,9 @@ namespace ryo {
             MIX_DestroyAudio(audio);
             return;
         }
+
+        MIX_SetTrackGain(track, soundDesc.config.volume);
+        MIX_SetTrackLoops(track, soundDesc.config.looping ? -1 : 0);
 
         InternalAudio* internAudio = new InternalAudio;
         internAudio->audio = audio;
@@ -134,6 +139,10 @@ namespace ryo {
                 return false;
             }
         } else {
+            if (MIX_TrackPlaying(internal->track)) {
+                return true;
+            }
+
             if (!MIX_PlayTrack(internal->track, 0)) {
                 error_set("Failed to play sound: %s", SDL_GetError());
                 return false;

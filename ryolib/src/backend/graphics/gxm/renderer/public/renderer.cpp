@@ -125,6 +125,8 @@ namespace ryo {
         framebuf.height = DISPLAY_HEIGHT;
 
         sceDisplaySetFrameBuf(&framebuf, SCE_DISPLAY_SETBUF_NEXTFRAME);
+
+        sceDisplayWaitVblankStart();
     }
 
     static bool _create_display_buffers(InternalRenderer* intern, _DisplayBuffer& buffer) {
@@ -404,7 +406,7 @@ namespace ryo {
             { 0.5f,  0.5f, 0.0f}
         };
 
-        static const uint16_t quadIndices[] = {
+        static const uint32_t quadIndices[] = {
             0, 1, 2,
             2, 1, 3
         };
@@ -440,7 +442,7 @@ namespace ryo {
             { { 0.5f,  0.5f, 0.0f}, {1.0f, 0.0f} }
         };
 
-        static const uint16_t quadIndicesUV[] = {
+        static const uint32_t quadIndicesUV[] = {
             0, 1, 2,
             2, 1, 3
         };

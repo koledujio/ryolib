@@ -72,10 +72,32 @@ namespace ryo {
 
         // DeltaTime
         float deltaTime = 0.0f;
-        std::chrono::steady_clock::time_point lastTime;
+        SceUInt64 lastTime;
+
+        RenderTarget* currentTarget = nullptr;
     };
 
-    struct InternalRenderTarget {};
+    struct InternalRenderTarget {
+        const Renderer* renderer = nullptr;
+
+        SceGxmRenderTarget* renderTarget = nullptr;
+        SceGxmColorSurface colorSurface = {};
+        SceGxmDepthStencilSurface depthSurface = {};
+        SceGxmSyncObject* sync = nullptr;
+
+        Texture* colorTexture = nullptr;
+        Texture* depthTexture = nullptr;
+
+        void* colorMem = nullptr;
+        SceUID colorMemId = -1;
+
+        void* depthMem = nullptr;
+        SceUID depthMemId = -1;
+
+        unsigned int width = 0;
+        unsigned int height = 0;
+        uint32_t stride = 0;
+    };
 
     struct InternalTexture {
         const Renderer* renderer = nullptr;

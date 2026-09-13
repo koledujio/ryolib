@@ -71,8 +71,8 @@ elseif(VITA)
     include(windowing/SDLBackend)
     setup_sdl_backend(ryolib)
 
-    include(text/StubBackend)
-    setup_stub_text_backend(ryolib)
+    include(text/SDLBackend)
+    setup_sdl_ttf_backend(ryolib)
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)

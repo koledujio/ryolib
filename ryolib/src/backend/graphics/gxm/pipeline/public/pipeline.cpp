@@ -1,4 +1,4 @@
-#include "../../private.h"
+#include "../private.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -311,7 +311,7 @@ namespace ryo {
 
         SceGxmVertexStream stream = {};
         stream.stride = attributeSize;
-        stream.indexSource = SCE_GXM_INDEX_SOURCE_INDEX_16BIT;
+        stream.indexSource = SCE_GXM_INDEX_SOURCE_INDEX_32BIT;
 
         SceGxmVertexProgram* vertexProgram = nullptr;
         int vertexCreateResult = sceGxmShaderPatcherCreateVertexProgram(
@@ -337,13 +337,17 @@ namespace ryo {
         fprintf(log, "Vertex program created\n");
         fflush(log);
 
+        SceGxmBlendInfo blendInfo = {};
+        _blend_info_gxm_get(desc.blendMode, blendInfo);
+        const SceGxmBlendInfo* blendInfoPtr = (desc.blendMode != BLEND_MODE_OPAQUE) ? &blendInfo : nullptr;
+
         SceGxmFragmentProgram* fragmentProgram = nullptr;
         int fragmentCreateResult = sceGxmShaderPatcherCreateFragmentProgram(
             renderer.internal->shaderPatcher,
             fragmentProgramId,
             SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
             SCE_GXM_MULTISAMPLE_NONE,
-            nullptr,
+            blendInfoPtr,
             vertexProgramData,
             &fragmentProgram
         );

@@ -170,9 +170,19 @@ int main_vita() {
 }
 
 int main() {
-#if __vita__
-    return main_vita();
-#endif
+// #if __vita__
+//     return main_vita();
+// #endif
+
+    #if __vita__
+    ryo::Window window("GFX Test", 960, 544);
+    #else
+    ryo::Window window("GFX Test", 1280, 720);
+    #endif
+    if (!window.valid()) {
+        printf("[APP] Failed to create gfx window!\n");
+        return 0;
+    }
 
     ryo::AudioEngine audioEngine;
     if (!audioEngine.valid()) {
@@ -201,12 +211,6 @@ int main() {
         return 0;
     }
 
-    ryo::Window window("GFX Test", 1280, 720);
-    if (!window.valid()) {
-        printf("[APP] Failed to create gfx window!\n");
-        return 0;
-    }
-
     void* nwh = window.nwh_get();
 
     // if (nwh == nullptr) {
@@ -216,8 +220,13 @@ int main() {
 
     ryo::RendererConfig config = {};
     config.nativeWindowHandle = nwh;
+    #if __vita__
+    config.width = 960;
+    config.height = 544;
+    #else
     config.width = 1280;
     config.height = 720;
+    #endif
 
     ryo::Renderer renderer(config);
     if (!renderer.valid()) {
@@ -256,6 +265,16 @@ int main() {
 
     ryo::Buffer vbo(renderer, cubeVertices, sizeof(ryo::PositionUVVertex) * 8, ryo::BUFFER_TYPE_VERTEX);
     ryo::Buffer ibo(renderer, cubeIndices, sizeof(uint32_t) * 36, ryo::BUFFER_TYPE_INDEX);
+
+    if (!vbo.valid()) {
+        printf("[APP] Invalid vertex buffer object\n");
+        return 0;
+    }
+
+    if (!ibo.valid()) {
+        printf("[APP] Invalid index buffer object!\n");
+        return 0;
+    }
 
     ryo::FontConfig fontConfig;
     fontConfig.path = "assets/lato-400-normal.ttf";
@@ -335,9 +354,14 @@ int main() {
         return 0;
     }
 
+
     int tetoHeight, tetoWidth;
     ryo::Texture* tetoTexture = ryo::image_load_texture(renderer, "assets/kasane-teto.png", tetoWidth, tetoHeight);
     if (tetoTexture == nullptr || !tetoTexture->valid()) {
+        FILE* log = fopen("ux0:data/ryolib-image.log", "a");
+        fprintf(log, "%s", ryo::error_get());
+        fflush(log);
+        fclose(log);
         return 0;
     }
     int endTetoHeight = 720; // height of the window
@@ -480,13 +504,13 @@ int main() {
             }
         }
 
-        rotationAngle += 0.015f;
+        rotationAngle += 1.5f * renderer.frame_time_get();
 
         renderer.frame_begin();
 
         if (!tetoDrawn) {
             ryo::Color w = {1.0f, 1.0f, 1.0f, 1.0f};
-            ryo::Color tetoClear = {0.5f, 0.5f, 1.0f, 1.0f};
+            ryo::Color tetoClear = {0.5f, 0.5f, 1.0f, 0.0f};
 
             renderer.draw_pass_begin(&tetoTarget, &tetoClear);
 

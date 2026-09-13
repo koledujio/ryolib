@@ -1,6 +1,7 @@
 #include "../../private.h"
 
 #include <psp2/gxm.h>
+#include <psp2/kernel/processmgr.h>
 #include <chrono>
 
 namespace ryo {
@@ -8,12 +9,11 @@ namespace ryo {
         RYO_ENSURE_VOID(valid(), "Invalid renderer");
         RYO_ENSURE_VOID(!internal->inFrame, "Renderer already in a frame");
 
-        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-        if (internal->lastTime.time_since_epoch().count() != 0) {
-            std::chrono::duration<float> elapsed = now - internal->lastTime;
-            internal->deltaTime = elapsed.count();
+        SceUInt64 now = sceKernelGetProcessTimeWide();
+        if (internal->lastTime != 0) {
+            internal->deltaTime = static_cast<float>(now - internal->lastTime) / 1000000.0f;
         } else {
-            internal->deltaTime = 0.0f;
+            internal->deltaTime = 1.0f / 60.0f;
         }
         internal->lastTime = now;
 
