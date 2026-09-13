@@ -70,8 +70,26 @@ namespace ryo {
         delete internal;
     }
 
-    Texture::Texture(Texture&&) {}
-    Texture& Texture::operator=(Texture&&) {return *this;}
+    Texture::Texture(Texture&& other) : internal(other.internal) {
+        other.internal = nullptr;
+    }
+
+    Texture& Texture::operator=(Texture&& other) {
+        if (this == &other)
+            return *this;
+
+        if (internal) {
+            if (internal->mem)
+                _memory_free_gpu(internal->mem, internal->memId);
+
+            delete internal;
+        }
+
+        internal = other.internal;
+        other.internal = nullptr;
+
+        return *this;
+    }
 
     bool Texture::valid() const {
         return internal != nullptr &&
