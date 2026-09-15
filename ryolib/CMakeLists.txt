@@ -6,6 +6,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(RYOLIB_CORE_SOURCES
     src/math/matrix4.cpp
     src/math/vector3.cpp
+    src/math/vector2.cpp
 
     src/debug/error/error.cpp
 )

@@ -17,6 +17,16 @@ namespace ryo {
         float length_squared() const;
     };
 
+    struct Vector2 {
+        float x = 0.0f;
+        float y = 0.0f;
+
+        Vector2 operator+(const Vector2& b) const;
+        Vector2 operator-(const Vector2& b) const;
+        Vector2 operator*(float scalar) const;
+        Vector2 operator/(float scalar) const;
+    };
+
     struct Matrix4 {
         float m[16];
 
