@@ -18,6 +18,31 @@ namespace ryo {
             intern->defaultTexturePipeline = nullptr;
         }
 
+        if (intern->stencilPipeline) {
+            delete intern->stencilPipeline;
+            intern->stencilPipeline = nullptr;
+        }
+
+        if (intern->quadVertexBuffer) {
+            delete intern->quadVertexBuffer;
+            intern->quadVertexBuffer = nullptr;
+        }
+
+        if (intern->quadIndexBuffer) {
+            delete intern->quadIndexBuffer;
+            intern->quadIndexBuffer = nullptr;
+        }
+
+        if (intern->quadVertexBufferUV) {
+            delete intern->quadVertexBufferUV;
+            intern->quadVertexBufferUV = nullptr;
+        }
+
+        if (intern->quadIndexBufferUV) {
+            delete intern->quadIndexBufferUV;
+            intern->quadIndexBufferUV = nullptr;
+        }
+
         if (intern->depthMem) {
             sceGxmUnmapMemory(intern->depthMem);
             intern->depthMem = nullptr;

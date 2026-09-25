@@ -45,6 +45,8 @@ function(setup_gxm_backend TARGET_NAME)
         src/shaders/gxm/color_f.cg
         src/shaders/gxm/texture_v.cg
         src/shaders/gxm/texture_f.cg
+        src/shaders/gxm/stencil_v.cg
+        src/shaders/gxm/stencil_f.cg
     )
     set(GXP_FILES "")
 

@@ -11,15 +11,20 @@ namespace ryo {
         pass.colorAttachments[0].storeAction = MTLStoreActionStore;
         pass.depthAttachment.texture = _draw_get_depth_texture(*internal, target);
         pass.depthAttachment.storeAction = MTLStoreActionStore;
+        pass.stencilAttachment.texture = _draw_get_depth_texture(*internal, target);
+        pass.stencilAttachment.storeAction = MTLStoreActionStore;
 
         if (clearColor != nullptr) {
             pass.colorAttachments[0].loadAction = MTLLoadActionClear;
             pass.colorAttachments[0].clearColor = MTLClearColorMake(clearColor->r, clearColor->g, clearColor->b, clearColor->a);
             pass.depthAttachment.loadAction = MTLLoadActionClear;
             pass.depthAttachment.clearDepth = 1.0f;
+            pass.stencilAttachment.loadAction = MTLLoadActionClear;
+            pass.stencilAttachment.clearStencil = 0;
         } else {
             pass.colorAttachments[0].loadAction = MTLLoadActionLoad;
             pass.depthAttachment.loadAction = MTLLoadActionLoad;
+            pass.stencilAttachment.loadAction = MTLLoadActionLoad;
         }
 
         internal->currentEncoder = [internal->currentCommandBuffer renderCommandEncoderWithDescriptor:pass];

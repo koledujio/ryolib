@@ -33,8 +33,16 @@ namespace ryo {
         id<MTLLibrary> shaderLibrary = nil;
         Pipeline* defaultColorPipeline = nullptr;
         Pipeline* defaultTexturePipeline = nullptr;
+        Pipeline* stencilPipeline = nullptr;
+
+        Buffer* quadVertexBuffer = nullptr;
+        Buffer* quadIndexBuffer = nullptr;
+        Buffer* quadVertexBufferUV = nullptr;
+        Buffer* quadIndexBufferUV = nullptr;
         
-        id<MTLDepthStencilState> depthStencilState = nil;
+        id<MTLDepthStencilState> depthStates[3] = {nil, nil, nil};
+        id<MTLDepthStencilState> stencilTestStates[3] = {nil, nil, nil};
+        id<MTLDepthStencilState> stencilWriteState = nil;
         id<MTLTexture> mainWindowDepthTexture = nil;
 
         id<MTLSamplerState> nearestSampler = nil;
@@ -76,4 +84,42 @@ namespace ryo {
     struct InternalPipeline {
         id<MTLRenderPipelineState> pso = nil;
     };
+
+    enum StencilShapeType {
+        _STENCIL_SHAPE_RECTANGLE,
+        _STENCIL_SHAPE_ROUNDED_RECTANGLE,
+        _STENCIL_SHAPE_OVAL
+    };
+
+    struct StencilCommand {
+        StencilShapeType shape;
+        Matrix4 matrix;
+
+        float radius; // rounded rectangle requires this
+        Camera camera;
+        bool hasCamera;
+    };
+
+    struct StencilVertexUniforms {
+        Matrix4 matrix;
+    };
+
+    struct StencilFragmentUniforms {
+        Vector2 scale;
+        float radius;
+
+        uint32_t shape;
+    };
+
+    struct InternalStencil {
+        InternalRenderer* renderer = nullptr;
+        InternalRenderTarget* renderTarget = nullptr;
+
+        StencilCommand* commands = nullptr;
+        size_t commandCount = 0;
+        size_t commandCapacity = 0;
+    };
+
+    Matrix4 _compute_camera_vp(const Camera& camera, float aspect);
+    void _draw_get_target_size(const InternalRenderer& renderer, int& width, int& height);
 }

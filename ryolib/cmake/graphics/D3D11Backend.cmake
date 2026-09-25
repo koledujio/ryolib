@@ -14,6 +14,8 @@ function(setup_d3d11_backend TARGET_NAME)
         src/shaders/d3d11/color_ps.hlsl
         src/shaders/d3d11/texture_vs.hlsl
         src/shaders/d3d11/texture_ps.hlsl
+        src/shaders/d3d11/stencil_vs.hlsl
+        src/shaders/d3d11/stencil_ps.hlsl
     )
 
     target_compile_hlsl(${TARGET_NAME} SHADERS ${HLSL_SHADERS})

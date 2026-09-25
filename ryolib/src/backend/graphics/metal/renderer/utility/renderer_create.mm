@@ -29,20 +29,63 @@ namespace ryo {
 
         _renderer_sampler_init(*intern);
 
-        MTLDepthStencilDescriptor* depthStencilDesc = [[MTLDepthStencilDescriptor alloc] init];
-        depthStencilDesc.depthCompareFunction = MTLCompareFunctionLess;
-        depthStencilDesc.depthWriteEnabled = YES;
-        intern->depthStencilState = [device newDepthStencilStateWithDescriptor:depthStencilDesc];
-        [depthStencilDesc release];
+        // DISABLED, READ, READ_WRITE
+        MTLCompareFunction depthFuncs[3] = { MTLCompareFunctionAlways, MTLCompareFunctionLessEqual, MTLCompareFunctionLessEqual };
+        BOOL depthWrites[3] = { NO, NO, YES };
 
-        MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:config.width height:config.height mipmapped:NO];
+        for (int i = 0; i < 3; i++) {
+            MTLDepthStencilDescriptor* desc = [[MTLDepthStencilDescriptor alloc] init];
+            desc.depthCompareFunction = depthFuncs[i];
+            desc.depthWriteEnabled = depthWrites[i];
+            intern->depthStates[i] = [device newDepthStencilStateWithDescriptor:desc];
+            [desc release];
+        }
+
+        MTLTextureDescriptor* depthTextureDesc =
+            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float_Stencil8
+                                  width:config.width
+                                  height:config.height
+                                  mipmapped:NO];
+        
         depthTextureDesc.usage = MTLTextureUsageRenderTarget;
         depthTextureDesc.storageMode = MTLStorageModePrivate;
         intern->mainWindowDepthTexture = [device newTextureWithDescriptor:depthTextureDesc];
 
-        if (!_renderer_pipeline_init(renderer, *intern)) {
+        MTLDepthStencilDescriptor* stencilWriteDesc = [[MTLDepthStencilDescriptor alloc] init];
+        stencilWriteDesc.depthCompareFunction = MTLCompareFunctionAlways;
+        stencilWriteDesc.depthWriteEnabled = NO;
+        stencilWriteDesc.frontFaceStencil.stencilCompareFunction = MTLCompareFunctionAlways;
+        stencilWriteDesc.frontFaceStencil.stencilFailureOperation = MTLStencilOperationKeep;
+        stencilWriteDesc.frontFaceStencil.depthFailureOperation = MTLStencilOperationKeep;
+        stencilWriteDesc.frontFaceStencil.depthStencilPassOperation = MTLStencilOperationReplace;
+        stencilWriteDesc.frontFaceStencil.readMask = 0xFF;
+        stencilWriteDesc.frontFaceStencil.writeMask = 0xFF;
+        stencilWriteDesc.backFaceStencil = stencilWriteDesc.frontFaceStencil;
+        intern->stencilWriteState = [device newDepthStencilStateWithDescriptor:stencilWriteDesc];
+        [stencilWriteDesc release];
+
+        for (int i = 0; i < 3; i++) {
+            MTLDepthStencilDescriptor* desc = [[MTLDepthStencilDescriptor alloc] init];
+            desc.depthCompareFunction = depthFuncs[i];
+            desc.depthWriteEnabled = depthWrites[i];
+            desc.frontFaceStencil.stencilCompareFunction = MTLCompareFunctionEqual;
+            desc.frontFaceStencil.stencilFailureOperation = MTLStencilOperationKeep;
+            desc.frontFaceStencil.depthFailureOperation = MTLStencilOperationKeep;
+            desc.frontFaceStencil.depthStencilPassOperation = MTLStencilOperationKeep;
+            desc.frontFaceStencil.readMask = 0xFF;
+            desc.frontFaceStencil.writeMask = 0x00;
+            desc.backFaceStencil = desc.frontFaceStencil;
+            intern->stencilTestStates[i] = [device newDepthStencilStateWithDescriptor:desc];
+            [desc release];
+        }
+
+        if (!_renderer_pipeline_init(renderer, *intern) || !_renderer_buffers_init(renderer, *intern)) {
             [intern->metalLayer release];
-            [intern->depthStencilState release];
+            for (int i = 0; i < 3; i++) {
+                if (intern->depthStates[i]) [intern->depthStates[i] release];
+                if (intern->stencilTestStates[i]) [intern->stencilTestStates[i] release];
+            }
+            if (intern->stencilWriteState) [intern->stencilWriteState release];
             [intern->mainWindowDepthTexture release];
             [intern->nearestSampler release];
             [intern->linearSampler release];

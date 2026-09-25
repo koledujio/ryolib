@@ -22,10 +22,25 @@ namespace ryo {
 
         ID3D11Texture2D* depthTexture = nullptr;
         ID3D11DepthStencilView* depthView = nullptr;
-        ID3D11DepthStencilState* depthState = nullptr;
+
+        ID3D11DepthStencilState* depthStates[3] = { nullptr, nullptr, nullptr };
+        ID3D11DepthStencilState* stencilWriteState = nullptr;
+        ID3D11DepthStencilState* stencilTestStates[3] = { nullptr, nullptr, nullptr };
 
         Pipeline* defaultColorPipeline = nullptr;
         Pipeline* defaultTexturePipeline = nullptr;
+        Pipeline* stencilPipeline = nullptr;
+
+        Buffer* quadVertexBuffer = nullptr;
+        Buffer* quadIndexBuffer = nullptr;
+        Buffer* quadUVVertexBuffer = nullptr;
+        Buffer* quadUVIndexBuffer = nullptr;
+
+        ID3D11Buffer* vertexCB = nullptr;
+        ID3D11Buffer* pixelCB = nullptr;
+
+        ID3D11SamplerState* samplers[4] = { nullptr };
+        ID3D11RasterizerState* rasterizers[3][2][2] = {{{ nullptr }}};
 
         bool inPass = false;
         bool inFrame = false;
@@ -67,4 +82,42 @@ namespace ryo {
 
         VertexLayoutType vertexLayout = VERTEX_LAYOUT_POSITION_UV;
     };
+
+    enum StencilShapeType {
+        _STENCIL_SHAPE_RECTANGLE,
+        _STENCIL_SHAPE_ROUNDED_RECTANGLE,
+        _STENCIL_SHAPE_OVAL
+    };
+
+    struct StencilCommand {
+        StencilShapeType shape;
+        Matrix4 matrix;
+
+        float radius;
+        Camera camera;
+        bool hasCamera;
+    };
+
+    struct StencilVertexUniforms {
+        Matrix4 matrix;
+    };
+
+    struct StencilPixelUniforms {
+        Vector2 scale;
+        float radius;
+
+        uint32_t shape;
+    };
+
+    struct InternalStencil {
+        InternalRenderer* renderer = nullptr;
+        InternalRenderTarget* renderTarget = nullptr;
+
+        StencilCommand* commands = nullptr;
+        size_t commandCount = 0;
+        size_t commandCapacity = 0;
+    };
+
+    Matrix4 _draw_compute_camera_vp(const Camera& camera, float aspect);
+    void _draw_get_target_size(const InternalRenderer& renderer, int& width, int& height);
 }

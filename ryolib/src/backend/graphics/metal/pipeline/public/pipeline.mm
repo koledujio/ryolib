@@ -39,9 +39,14 @@ namespace ryo {
         pipelineDesc.vertexDescriptor = vertexDesc;
         pipelineDesc.fragmentFunction = frag;
         pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-        pipelineDesc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+        pipelineDesc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
+        pipelineDesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
 
-        _pipeline_set_blend_mode(pipelineDesc, desc.blendMode);
+        if (desc.shader == BUILTIN_SHADER_STENCIL) {
+            pipelineDesc.colorAttachments[0].writeMask = MTLColorWriteMaskNone;
+        } else {
+            _pipeline_set_blend_mode(pipelineDesc, desc.blendMode);
+        }
 
         NSError* error = nil;
         id<MTLRenderPipelineState> pso = [device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
@@ -51,7 +56,7 @@ namespace ryo {
             [vert release];
             [frag release];
             [pipelineDesc release];
-            return; // finish editing pipeline.mm to match graphics.h(OOP)
+            return;
         }
 
         [vert release];

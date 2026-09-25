@@ -1,0 +1,149 @@
+#pragma once
+
+#include "../../demo.h"
+#include <cmath>
+
+class RenderTargetDemo : public Demo {
+public:
+    const char* title_get() const override {
+        return "Render Target";
+    }
+
+    bool init(DemoContext& ctx) override {
+        ryo::PipelineDesc pipelineDesc = {};
+        pipelineDesc.shader = ryo::BUILTIN_SHADER_TEXTURE;
+        pipelineDesc.blendMode = ryo::BLEND_MODE_ALPHA;
+        pipelineDesc.vertexLayout = ryo::VERTEX_LAYOUT_POSITION_UV;
+
+        m_pipeline = new ryo::Pipeline(ctx.renderer, pipelineDesc);
+        if (!m_pipeline->valid()) {
+            printf("Failed to create pipeline: %s\n", ryo::error_get());
+            return false;
+        }
+
+        m_camera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+        m_camera.orthographicSize = 720.0f;
+        m_camera.nearPlane = -1.0f;
+        m_camera.farPlane = 1.0f;
+        m_camera.position = {0.0f, 0.0f, 1.0f};
+        m_camera.target = {0.0f, 0.0f, 0.0f};
+        m_camera.up = {0.0f, 1.0f, 0.0f};
+
+        m_settings.cullMode = ryo::CULL_MODE_BACK;
+        m_settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
+        m_settings.fillMode = ryo::FILL_MODE_SOLID;
+        m_settings.depthMode = ryo::DEPTH_MODE_DISABLED;
+        m_settings.camera = &m_camera;
+        m_settings.pipelineOverride = m_pipeline;
+        m_settings.stencil = nullptr;
+
+        ryo::FontConfig fontConfig = {};
+        fontConfig.path = "assets/lato-400-normal.ttf";
+        fontConfig.fontSize = 30.0f;
+
+        m_font = new ryo::Font(fontConfig);
+        if (!m_font->valid()) {
+            printf("Failed to load font: %s\n", ryo::error_get());
+            quit(ctx);
+            return 0;
+        }
+
+        const char* text = "This text is being rendered off-screen to a render target, then the render target is drawn.";
+        ryo::Color textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+
+        void* pixels = nullptr;
+        if (!m_font->pixels_render_line(text, textColor, m_width, m_height, pixels)) {
+            printf("Failed to render text line: %s\n", ryo::error_get());
+            quit(ctx);
+            return false;
+        }
+
+        m_texture = new ryo::Texture(ctx.renderer, pixels, m_width, m_height);
+        m_font->pixels_free(pixels);
+        if (m_texture == nullptr || !m_texture->valid()) {
+            printf("Failed to create text texture: %s\n", ryo::error_get());
+            quit(ctx);
+            return false;
+        }
+
+        m_renderTarget = new ryo::RenderTarget(ctx.renderer, m_width, m_height);
+        if (!m_renderTarget->valid()) {
+            printf("Failed to create render target: %s\n", ryo::error_get());
+            quit(ctx);
+            return false;
+        }
+
+        m_textDrawn = false;
+
+        m_renderTargetCamera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+        m_renderTargetCamera.orthographicSize = m_height;
+        m_renderTargetCamera.nearPlane = -1.0f;
+        m_renderTargetCamera.farPlane = 1.0f;
+        m_renderTargetCamera.position = {0.0f, 0.0f, 1.0f};
+        m_renderTargetCamera.target = {0.0f, 0.0f, 0.0f};
+        m_renderTargetCamera.up = {0.0f, 1.0f, 0.0f};
+
+        m_renderTargetSettings.cullMode = ryo::CULL_MODE_BACK;
+        m_renderTargetSettings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
+        m_renderTargetSettings.fillMode = ryo::FILL_MODE_SOLID;
+        m_renderTargetSettings.depthMode = ryo::DEPTH_MODE_DISABLED;
+        m_renderTargetSettings.camera = &m_renderTargetCamera;
+        m_renderTargetSettings.pipelineOverride = m_pipeline;
+        m_renderTargetSettings.stencil = nullptr;
+
+        return true;
+    }
+
+    void quit(DemoContext& ctx) override {
+        if (m_renderTarget != nullptr) {
+            delete m_renderTarget;
+            m_renderTarget = nullptr;
+        }
+
+        if (m_texture != nullptr) {
+            delete m_texture;
+            m_texture = nullptr;
+        }
+
+        if (m_pipeline != nullptr) {
+            delete m_pipeline;
+            m_pipeline = nullptr;
+        }
+
+        if (m_font != nullptr) {
+            delete m_font;
+            m_font = nullptr;
+        }
+    }
+
+    void render(DemoContext& ctx) override {
+        ryo::Color clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        ryo::Color imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+
+        ryo::Matrix4 matrix = ryo::Matrix4::scaling((float)m_width, (float)m_height, 1.0f);
+
+        ctx.renderer.draw_pass_begin(m_renderTarget, &clearColor);
+
+        ctx.renderer.draw_rect_texture(*m_texture, ryo::SAMPLER_TYPE_LINEAR, imageColor, matrix, &m_renderTargetSettings);
+
+        ctx.renderer.draw_pass_end();
+
+        ctx.renderer.draw_pass_begin(nullptr, &clearColor);
+
+        ctx.renderer.draw_rect_texture(*m_renderTarget->texture_color_get(), ryo::SAMPLER_TYPE_LINEAR, imageColor, matrix, &m_settings);
+
+        ctx.renderer.draw_pass_end();
+    }
+
+private:
+    ryo::Pipeline* m_pipeline;
+    ryo::Camera m_camera;
+    ryo::DrawSettings m_settings;
+    ryo::Camera m_renderTargetCamera;
+    ryo::DrawSettings m_renderTargetSettings;
+    ryo::Font* m_font;
+    int m_width, m_height;
+    ryo::Texture* m_texture;
+    ryo::RenderTarget* m_renderTarget;
+    bool m_textDrawn;
+};

@@ -1,0 +1,29 @@
+struct FragmentInput {
+    float2 localPosition : TEXCOORD0;
+};
+
+float4 StencilParams;
+
+float4 main(FragmentInput input) : COLOR {
+    float2 pos = input.localPosition;
+    float2 scale = StencilParams.xy;
+    float radius = StencilParams.z;
+    int shape = (int)StencilParams.w;
+
+    if (shape == 1) {
+        float r = radius * min(scale.x, scale.y);
+        float2 halfSize = 0.5 * scale;
+        float2 q = abs(pos * scale) - (halfSize - float2(r, r));
+        float dist = length(max(q, float2(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
+        if (dist > 0.0) {
+            discard;
+        }
+    } else if (shape == 2) {
+        float2 uv = pos * 2.0;
+        if (dot(uv, uv) > 1.0) {
+            discard;
+        }
+    }
+
+    return float4(1.0, 1.0, 1.0, 1.0);
+}

@@ -18,6 +18,7 @@ function(setup_metal_backend TARGET_NAME)
     set(METAL_SHADERS
         src/shaders/metal/color.metal
         src/shaders/metal/texture.metal
+        src/shaders/metal/stencil.metal
     )
     set(AIR_FILES "")
 

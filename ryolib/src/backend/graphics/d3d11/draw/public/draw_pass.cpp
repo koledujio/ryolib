@@ -23,7 +23,7 @@ namespace ryo {
         RYO_ASSERT_VOID(depthView != nullptr, "Invalid depth stencil view");
 
         internal->context->OMSetRenderTargets(1, &colorView, depthView);
-        internal->context->OMSetDepthStencilState(internal->depthState, 0);
+        internal->context->OMSetDepthStencilState(internal->depthStates[0], 0);
 
         int width = target ? target->internal->width : internal->width;
         int height = target ? target->internal->height : internal->height;

@@ -73,21 +73,29 @@ namespace ryo {
         if (!internal)
             return;
 
-        if (internal->track)
+        if (internal->track) {
+            MIX_StopTrack(internal->track, 0);
+            MIX_SetTrackAudio(internal->track, nullptr);
             MIX_DestroyTrack(internal->track);
+            internal->track = nullptr;
+        }
 
         if (internal->audio) {
             internal->audio->refCount--;
 
             if (internal->audio->refCount == 0) {
-                if (internal->audio->audio)
+                if (internal->audio->audio) {
                     MIX_DestroyAudio(internal->audio->audio);
+                    internal->audio->audio = nullptr;
+                }
                 
                 delete internal->audio;
+                internal->audio = nullptr;
             }
         }
 
         delete internal;
+        internal = nullptr;
     }
 
     Sound::Sound(Sound&& other) : internal(other.internal) {
@@ -99,21 +107,29 @@ namespace ryo {
             return *this;
 
         if (internal) {
-            if (internal->track)
+            if (internal->track) {
+                MIX_StopTrack(internal->track, 0);
+                MIX_SetTrackAudio(internal->track, nullptr);
                 MIX_DestroyTrack(internal->track);
+                internal->track = nullptr;
+            }
 
             if (internal->audio) {
                 internal->audio->refCount--;
 
                 if (internal->audio->refCount == 0) {
-                    if (internal->audio->audio)
+                    if (internal->audio->audio) {
                         MIX_DestroyAudio(internal->audio->audio);
+                        internal->audio->audio = nullptr;
+                    }
 
                     delete internal->audio;
+                    internal->audio = nullptr;
                 }
             }
 
             delete internal;
+            internal = nullptr;
         }
 
         internal = other.internal;

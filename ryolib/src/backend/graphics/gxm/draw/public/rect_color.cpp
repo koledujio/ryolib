@@ -3,82 +3,41 @@
 namespace ryo {
     bool Renderer::draw_rect_color(const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {
         RYO_ENSURE(valid(), false, "Invalid renderer");
-        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
-        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
 
-        const Pipeline* pipeline = _draw_active_pipeline_get(internal->defaultColorPipeline, settings);
-        RYO_ASSERT(pipeline != nullptr && pipeline->valid(), false, "Failed to get valid pipeline");
-
-        sceGxmSetVertexProgram(internal->context, pipeline->internal->vertexProgram);
-        sceGxmSetFragmentProgram(internal->context, pipeline->internal->fragmentProgram);
-
-        _draw_apply_settings(internal->context, settings);
-        _draw_apply_depth_settings(internal->context, settings);
-
-        sceGxmSetFrontStencilRef(internal->context, 0);
-        sceGxmSetBackStencilRef(internal->context, 0);
-
-        Matrix4 mvp = _draw_compute_mvp(*internal, matrix, settings);
-        
-        void* vertexUniforms = nullptr;
-        int result = sceGxmReserveVertexDefaultUniformBuffer(internal->context, &vertexUniforms);
-        if (result < 0) {
-            error_set("sceGxmReserveVertexDefaultUniformBuffer 0x%08X", result);
-            return false;
+        Matrix4 mvp = matrix;
+        if (settings && settings->camera) {
+            int width = 0, height = 0;
+            _draw_get_target_size(*internal, width, height);
+            mvp = _draw_compute_camera_vp(*settings->camera, (float)width / (float)height) * matrix;
         }
-        result = sceGxmSetUniformDataF(vertexUniforms, pipeline->internal->vertexParameters[0], 0, 16, mvp.m);
-        if (result < 0) {
-            error_set("sceGxmSetUniformDataF: 0x%08X", result);
-            return false;
-        }
+        Matrix4 mvpTransposed = mvp.transpose();
 
-        void* fragmentUniforms = nullptr;
-        result = sceGxmReserveFragmentDefaultUniformBuffer(internal->context, &fragmentUniforms);
-        if (result < 0) {
-            error_set("sceGxmReserveFragmentDefaultUniformBuffer: 0x%08X", result);
-            return false;
-        }
-        float rgba[4] {
-            color.r,
-            color.g,
-            color.b,
-            color.a
-        };
-        result = sceGxmSetUniformDataF(fragmentUniforms, pipeline->internal->fragmentParameters[0], 0, 4, rgba);
-        if (result < 0) {
-            error_set("sceGxmSetUniformDataF: 0x%08X", result);
-            return false;
-        }
+        float col[4] = {color.r, color.g, color.b, color.a};
 
-        if (internal->quadIndexBuffer == nullptr || internal->quadIndexBuffer->internal->mem == nullptr) {
-            error_set("Quad index buffer memory is null!");
-            return false;
-        }
+        const Pipeline& pipeline = settings && settings->pipelineOverride
+            ? *settings->pipelineOverride
+            : *internal->defaultColorPipeline;
 
-        result = sceGxmSetVertexStream(
-            internal->context,
+        DrawCall call{
+            pipeline,
+            *internal->quadVertexBuffer,
+            sizeof(PositionVertex),
+            *internal->quadIndexBuffer,
+            6,
+            nullptr,
+            nullptr,
             0,
-            internal->quadVertexBuffer->internal->mem
-        );
+            mvpTransposed.m,
+            sizeof(Matrix4),
+            col,
+            sizeof(col),
+            settings ? settings->cullMode : CULL_MODE_NONE,
+            settings ? settings->windingOrder : WINDING_ORDER_COUNTER_CLOCKWISE,
+            settings ? settings->fillMode : FILL_MODE_SOLID,
+            settings ? settings->depthMode : DEPTH_MODE_READ_WRITE,
+            settings ? settings->stencil : nullptr
+        };
 
-        if (result < 0) {
-            error_set("sceGxmSetVertexStream error code: 0x%08X", result);
-            return false;
-        }
-
-        result = sceGxmDraw(
-            internal->context,
-            SCE_GXM_PRIMITIVE_TRIANGLES,
-            SCE_GXM_INDEX_FORMAT_U32,
-            internal->quadIndexBuffer->internal->mem,
-            6
-        );
-
-        if (result < 0) {
-            error_set("sceGxmDraw error code: 0x%08X", result);
-            return false;
-        }
-
-        return true;
+        return draw_ex(call);
     }
 }

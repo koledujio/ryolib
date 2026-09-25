@@ -1,4 +1,4 @@
-cbuffer UniformBuffer : register(b1) {
+cbuffer UniformBuffer : register(b0) {
     matrix u_mvp;
 };
 

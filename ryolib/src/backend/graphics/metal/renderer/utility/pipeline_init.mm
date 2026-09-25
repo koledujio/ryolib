@@ -41,6 +41,13 @@ namespace ryo {
         internalRenderer.defaultTexturePipeline = new Pipeline(renderer, textureDesc);
         RYO_ASSERT_NORETURN(internalRenderer.defaultTexturePipeline->valid(), "Failed to create default texture pipeline");
 
+        PipelineDesc stencilDesc = {};
+        stencilDesc.shader = BUILTIN_SHADER_STENCIL;
+        stencilDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
+        stencilDesc.blendMode = BLEND_MODE_OPAQUE;
+        internalRenderer.stencilPipeline = new Pipeline(renderer, stencilDesc);
+        RYO_ASSERT_NORETURN(internalRenderer.stencilPipeline->valid(), "Failed to create stencil pipeline");
+
         return true;
     }
 }

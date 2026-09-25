@@ -4,6 +4,10 @@ namespace ryo {
     void _render_target_destroy(InternalRenderTarget* target) {
         if (!target) return;
 
+        if (target->renderer && target->renderer->valid() && target->renderer->internal && target->renderer->internal->context) {
+            sceGxmFinish(target->renderer->internal->context);
+        }
+
         if (target->colorTexture) {
             delete target->colorTexture;
             target->colorTexture = nullptr;

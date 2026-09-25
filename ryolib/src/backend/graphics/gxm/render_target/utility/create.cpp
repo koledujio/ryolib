@@ -47,7 +47,9 @@ namespace ryo {
             return false;
         }
 
-        const uint32_t depthSize = _memory_align_cdram(target->stride * height * 4);
+        const uint32_t depthStride = (width + 31) & ~31;
+        const uint32_t depthHeight = (height + 31) & ~31;
+        const uint32_t depthSize = _memory_align_cdram(depthStride * depthHeight * 4);
         if (!_memory_alloc_gpu_rw("rt_depth", depthSize, _MEMORY_TYPE_CDRAM, target->depthMem, target->depthMemId)) {
             error_set("Failed to allocate render target depth memory");
             return false;
@@ -57,7 +59,7 @@ namespace ryo {
             &target->depthSurface,
             SCE_GXM_DEPTH_STENCIL_FORMAT_S8D24,
             SCE_GXM_DEPTH_STENCIL_SURFACE_TILED,
-            target->stride,
+            depthStride,
             target->depthMem,
             nullptr
         );
@@ -79,17 +81,17 @@ namespace ryo {
         colorTexIntern->width = width;
         colorTexIntern->height = height;
 
-        int textureInitLinearResult = sceGxmTextureInitLinear(
+        int textureInitLinearResult = sceGxmTextureInitLinearStrided(
             &colorTexIntern->texture,
             target->colorMem,
             SCE_GXM_TEXTURE_FORMAT_A8B8G8R8,
             width,
             height,
-            0
+            target->stride * 4
         );
         if (textureInitLinearResult < 0) {
             delete colorTexIntern;
-            error_set("sceGxmTextureInitLinear for render target color texture failed: 0x%08X", textureInitLinearResult);
+            error_set("sceGxmTextureInitLinearStrided for render target color texture failed: 0x%08X", textureInitLinearResult);
             return false;
         }
 

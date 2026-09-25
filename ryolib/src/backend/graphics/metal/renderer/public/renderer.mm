@@ -37,9 +37,31 @@ namespace ryo {
         
         if (internal->defaultTexturePipeline)
             delete internal->defaultTexturePipeline;
+        
+        if (internal->stencilPipeline)
+            delete internal->stencilPipeline;
 
-        if (internal->depthStencilState)
-            [internal->depthStencilState release];
+        if (internal->quadVertexBuffer)
+            delete internal->quadVertexBuffer;
+
+        if (internal->quadIndexBuffer)
+            delete internal->quadIndexBuffer;
+
+        if (internal->quadVertexBufferUV)
+            delete internal->quadVertexBufferUV;
+
+        if (internal->quadIndexBufferUV)
+            delete internal->quadIndexBufferUV;
+
+        for (int i = 0; i < 3; i++) {
+            if (internal->depthStates[i])
+                [internal->depthStates[i] release];
+            if (internal->stencilTestStates[i])
+                [internal->stencilTestStates[i] release];
+        }
+
+        if (internal->stencilWriteState)
+            [internal->stencilWriteState release];
 
         if (internal->mainWindowDepthTexture)
             [internal->mainWindowDepthTexture release];
@@ -72,16 +94,11 @@ namespace ryo {
     }
 
     bool Renderer::valid() const {
-        // this could probably be improved...
         return (internal != nullptr &&
                 internal->device != nil &&
                 internal->queue != nil &&
                 internal->shaderLibrary != nil &&
-                // internal->defaultColorPipeline != nullptr &&
-                // internal->defaultColorPipeline->valid() &&
-                // internal->defaultTexturePipeline != nullptr &&
-                // internal->defaultTexturePipeline->valid() &&
-                internal->depthStencilState != nil &&
+                internal->depthStates[0] != nil &&
                 internal->mainWindowDepthTexture != nil &&
                 internal->nearestSampler != nil &&
                 internal->linearSampler != nil &&
@@ -105,7 +122,7 @@ namespace ryo {
             internal->mainWindowDepthTexture = nil;
         }
 
-        MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:width height:height mipmapped:NO];
+        MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float_Stencil8 width:width height:height mipmapped:NO];
         depthTextureDesc.usage = MTLTextureUsageRenderTarget;
         depthTextureDesc.storageMode = MTLStorageModePrivate;
         internal->mainWindowDepthTexture = [internal->device newTextureWithDescriptor:depthTextureDesc];

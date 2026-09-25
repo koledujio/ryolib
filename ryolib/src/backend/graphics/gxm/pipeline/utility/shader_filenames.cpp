@@ -9,6 +9,9 @@ namespace ryo {
             case BUILTIN_SHADER_TEXTURE:
                 return "texture_v.gxp";
 
+            case BUILTIN_SHADER_STENCIL:
+                return "stencil_v.gxp";
+
             default:
                 return nullptr;
         }
@@ -21,6 +24,9 @@ namespace ryo {
 
             case BUILTIN_SHADER_TEXTURE:
                 return "texture_f.gxp";
+
+            case BUILTIN_SHADER_STENCIL:
+                return "stencil_f.gxp";
 
             default:
                 return nullptr;

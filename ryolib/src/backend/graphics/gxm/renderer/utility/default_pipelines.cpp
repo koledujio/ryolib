@@ -28,6 +28,18 @@ namespace ryo {
             fail = true;
         }
 
+        PipelineDesc stencilPipelineDesc = {};
+        stencilPipelineDesc.shader = BUILTIN_SHADER_STENCIL;
+        stencilPipelineDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
+        stencilPipelineDesc.blendMode = BLEND_MODE_OPAQUE;
+        intern->stencilPipeline = new Pipeline(renderer, stencilPipelineDesc);
+        if (!intern->stencilPipeline->valid()) {
+            RYO_ASSERT(false, false, "Failed to create stencil pipeline");
+            delete intern->stencilPipeline;
+            intern->stencilPipeline = nullptr;
+            fail = true;
+        }
+
         return !fail;
     }
 }

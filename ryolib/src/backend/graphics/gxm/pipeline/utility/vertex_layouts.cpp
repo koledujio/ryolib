@@ -24,6 +24,9 @@ namespace ryo {
                 if (mvpParam == nullptr) return false;
 
                 const SceGxmProgramParameter* colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "Color");
+                if (colorParam == nullptr) {
+                    colorParam = sceGxmProgramFindParameterByName(fragmentProgramData, "StencilParams");
+                }
                 if (colorParam == nullptr) return false;
 
                 registers = new uint32_t[1];

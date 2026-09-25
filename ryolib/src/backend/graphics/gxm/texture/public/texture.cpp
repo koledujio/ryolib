@@ -30,18 +30,18 @@ namespace ryo {
 
         SceGxmTexture texture;
 
-        int result = sceGxmTextureInitLinear(
+        int result = sceGxmTextureInitLinearStrided(
             &texture,
             mem,
             SCE_GXM_TEXTURE_FORMAT_A8B8G8R8,
             width,
             height,
-            0 // mip count
+            stride
         );
 
         if (result < 0) {
             _memory_free_gpu(mem, memId);
-            error_set("sceGxmTextureInitLinear failed 0x%08X", result);
+            error_set("sceGxmTextureInitLinearStrided failed 0x%08X", result);
             return;
         }
 
@@ -64,8 +64,12 @@ namespace ryo {
         if (!internal)
             return;
 
-        if (internal->mem)
+        if (internal->mem != nullptr && internal->memId >= 0) {
+            if (internal->renderer && internal->renderer->valid() && internal->renderer->internal && internal->renderer->internal->context) {
+                sceGxmFinish(internal->renderer->internal->context);
+            }
             _memory_free_gpu(internal->mem, internal->memId);
+        }
 
         delete internal;
     }
@@ -79,8 +83,12 @@ namespace ryo {
             return *this;
 
         if (internal) {
-            if (internal->mem)
+            if (internal->mem != nullptr && internal->memId >= 0) {
+                if (internal->renderer && internal->renderer->valid() && internal->renderer->internal && internal->renderer->internal->context) {
+                    sceGxmFinish(internal->renderer->internal->context);
+                }
                 _memory_free_gpu(internal->mem, internal->memId);
+            }
 
             delete internal;
         }

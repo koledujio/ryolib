@@ -58,6 +58,7 @@ namespace ryo {
         // Shader programs
         Pipeline* defaultColorPipeline = nullptr;
         Pipeline* defaultTexturePipeline = nullptr;
+        Pipeline* stencilPipeline = nullptr;
 
         // Draw call buffers
         Buffer* quadVertexBuffer = nullptr;
@@ -112,6 +113,7 @@ namespace ryo {
     };
 
     struct InternalBuffer {
+        const Renderer* renderer = nullptr;
         void* mem = nullptr;
         SceUID memId = -1;
 
@@ -137,6 +139,32 @@ namespace ryo {
         const SceGxmProgramParameter** fragmentParameters = nullptr;
         uint8_t fragmentParameterCount = 0;
     };
+
+    enum StencilShapeType {
+        _STENCIL_SHAPE_RECTANGLE,
+        _STENCIL_SHAPE_ROUNDED_RECTANGLE,
+        _STENCIL_SHAPE_OVAL
+    };
+
+    struct StencilCommand {
+        StencilShapeType shape;
+        Matrix4 matrix;
+        float radius;
+        Camera camera;
+        bool hasCamera;
+    };
+
+    struct InternalStencil {
+        InternalRenderer* renderer = nullptr;
+        InternalRenderTarget* renderTarget = nullptr;
+
+        StencilCommand* commands = nullptr;
+        size_t commandCount = 0;
+        size_t commandCapacity = 0;
+    };
+
+    Matrix4 _draw_compute_camera_vp(const Camera& camera, float aspect);
+    void _draw_get_target_size(const InternalRenderer& renderer, int& width, int& height);
 
     enum _MemoryType {
         _MEMORY_TYPE_MAIN,

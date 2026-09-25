@@ -3,43 +3,40 @@
 namespace ryo {
     bool Renderer::draw_rect_color(const Color& color, const Matrix4& matrix, const DrawSettings* settings) const {
         RYO_ENSURE(valid(), false, "Invalid renderer");
-        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
-        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
 
-        const Pipeline* pipeline = _draw_select_pipeline(settings, internal->defaultColorPipeline);
-        RYO_ASSERT(pipeline->valid(), false, "Failed to get a valid pipeline");
-
-        PositionVertex vertices[4] = {
-            { { -0.5f, -0.5f, 0.0f } },
-            { {  0.5f, -0.5f, 0.0f } },
-            { { -0.5f,  0.5f, 0.0f } },
-            { {  0.5f,  0.5f, 0.0f } }
-        };
-
-        ID3D11Buffer* vertexBuffer = nullptr;
-        if (!_draw_create_dynamic_buffer(internal->device, vertices, sizeof(vertices), D3D11_BIND_VERTEX_BUFFER, &vertexBuffer))
-            return false;
-
-        int width = 0;
-        int height = 0;
-        _draw_get_target_size(*internal, width, height);
-
-        Matrix4 mvp = _draw_get_mvp(*internal, settings, matrix, width, height);
-
-        if (!_draw_bind_pipeline(*internal, pipeline, settings) || !_draw_bind_mvp(*internal, mvp) || !_draw_bind_color(*internal, color)) {
-            vertexBuffer->Release();
-            return false;
+        Matrix4 mvp = matrix;
+        if (settings && settings->camera) {
+            int width, height;
+            _draw_get_target_size(*internal, width, height);
+            mvp = _draw_compute_camera_vp(*settings->camera, (float)width / (float)height) * matrix;
         }
 
-        UINT stride = sizeof(PositionVertex);
-        UINT offset = 0;
+        float col[4] = {color.r, color.g, color.b, color.a};
 
-        internal->context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-        internal->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-        internal->context->Draw(4, 0);
+        const Pipeline& pipeline = settings && settings->pipelineOverride
+            ? *settings->pipelineOverride
+            : *internal->defaultColorPipeline;
         
-        vertexBuffer->Release();
+        DrawCall call{
+            pipeline,
+            *internal->quadVertexBuffer,
+            sizeof(PositionVertex),
+            *internal->quadIndexBuffer,
+            6,
+            nullptr,
+            nullptr,
+            0,
+            mvp.m,
+            sizeof(Matrix4),
+            &col,
+            sizeof(col),
+            settings ? settings->cullMode : CULL_MODE_NONE,
+            settings ? settings->windingOrder : WINDING_ORDER_COUNTER_CLOCKWISE,
+            settings ? settings->fillMode : FILL_MODE_SOLID,
+            settings ? settings->depthMode : DEPTH_MODE_READ_WRITE,
+            settings ? settings->stencil : nullptr
+        };
 
-        return true;
+        return draw_ex(call);
     }
 }

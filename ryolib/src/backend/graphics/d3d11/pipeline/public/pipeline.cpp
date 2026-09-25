@@ -95,9 +95,21 @@ namespace ryo {
             return;
         }
 
-        if (!_pipeline_create_blend_state(renderer.internal->device, desc.blendMode, &intern->blendState)) {
-            _pipeline_release(intern);
-            return;
+        if (desc.shader == BUILTIN_SHADER_STENCIL) {
+            D3D11_BLEND_DESC blendDesc = {};
+            blendDesc.RenderTarget[0].BlendEnable = FALSE;
+            blendDesc.RenderTarget[0].RenderTargetWriteMask = 0;
+            HRESULT blendHr = renderer.internal->device->CreateBlendState(&blendDesc, &intern->blendState);
+            if (FAILED(blendHr)) {
+                error_set("Failed to create stencil blend state HRESULT: 0x%08X", static_cast<unsigned int>(blendHr));
+                _pipeline_release(intern);
+                return;
+            }
+        } else {
+            if (!_pipeline_create_blend_state(renderer.internal->device, desc.blendMode, &intern->blendState)) {
+                _pipeline_release(intern);
+                return;
+            }
         }
 
         internal = intern;

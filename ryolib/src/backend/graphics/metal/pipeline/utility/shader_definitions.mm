@@ -8,6 +8,9 @@ namespace ryo {
 
             case BUILTIN_SHADER_TEXTURE:
                 return @"texture";
+            
+            case BUILTIN_SHADER_STENCIL:
+                return @"stencil";
         }
     }
 }

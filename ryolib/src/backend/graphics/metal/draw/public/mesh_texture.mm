@@ -7,41 +7,42 @@ namespace ryo {
         RYO_ENSURE(indexBuffer.valid(), false, "Invalid index buffer");
         RYO_ENSURE(texture.valid(), false, "Invalid texture");
 
-        RYO_ENSURE(internal->inFrame, false, "Renderer not in a frame");
-        RYO_ENSURE(internal->inPass, false, "Renderer not in a draw pass");
-
-        id<MTLRenderPipelineState> pso = _draw_get_pso(settings, internal->defaultTexturePipeline);
-        RYO_ASSERT(pso != nil, false, "Failed to get valid pipeline state");
-
-        id<MTLRenderCommandEncoder> encoder = internal->currentEncoder;
-        id<MTLBuffer> vbo = vertexBuffer.internal->buffer;
-
-        [encoder setRenderPipelineState:pso];
-        [encoder setDepthStencilState:internal->depthStencilState];
-        [encoder setVertexBuffer:vbo offset:0 atIndex:0];
-
+        Matrix4 mvp = matrix;
         if (settings && settings->camera) {
             int width, height;
             _draw_get_target_size(*internal, width, height);
-            float fWidth = (float)width;
-            float fHeight = (float)height;
-            [encoder setVertexBytes:(_compute_camera_vp(*settings->camera, fWidth / fHeight) * matrix).m length:sizeof(Matrix4) atIndex:1];
-        } else {
-            [encoder setVertexBytes:matrix.m length:sizeof(Matrix4) atIndex:1];
+            mvp = _compute_camera_vp(*settings->camera, (float)width / (float)height) * matrix;
         }
 
-        _draw_apply_settings(encoder, settings);
-
         simd_float4 col = {color.r, color.g, color.b, color.a};
-        [encoder setFragmentBytes:&col length:sizeof(simd_float4) atIndex:0];
 
-        id<MTLTexture> imageToDraw = texture.internal->texture;
-        [encoder setFragmentTexture:imageToDraw atIndex:0];
-        [encoder setFragmentSamplerState:_sampler_get_from_type(*internal, samplerType) atIndex:0];
+        const Pipeline& pipeline = settings && settings->pipelineOverride
+            ? *settings->pipelineOverride
+            : *internal->defaultTexturePipeline;
 
-        id<MTLBuffer> ibo = indexBuffer.internal->buffer;
-        [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:indexCount indexType:MTLIndexTypeUInt32 indexBuffer:ibo indexBufferOffset:0];
+        const Texture* textures[] = { &texture };
+        SamplerType samplers[] = { samplerType };
 
-        return true;
+        DrawCall call{
+            pipeline,
+            vertexBuffer,
+            sizeof(PositionUVVertex),
+            indexBuffer,
+            indexCount,
+            textures,
+            samplers,
+            1,
+            mvp.m,
+            sizeof(Matrix4),
+            &col,
+            sizeof(simd_float4),
+            settings ? settings->cullMode : CULL_MODE_BACK,
+            settings ? settings->windingOrder : WINDING_ORDER_COUNTER_CLOCKWISE,
+            settings ? settings->fillMode : FILL_MODE_SOLID,
+            settings ? settings->depthMode : DEPTH_MODE_READ_WRITE,
+            settings ? settings->stencil : nullptr
+        };
+
+        return draw_ex(call);
     }
 }

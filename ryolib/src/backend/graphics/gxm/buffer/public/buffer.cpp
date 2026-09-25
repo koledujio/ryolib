@@ -28,6 +28,7 @@ namespace ryo {
         memcpy(mem, data, size);
 
         InternalBuffer* intern = new InternalBuffer;
+        intern->renderer = &renderer;
         intern->mem = mem;
         intern->memId = memId;
         intern->size = alignedSize;
@@ -40,8 +41,12 @@ namespace ryo {
         if (!internal)
             return;
 
-        if (internal->mem != nullptr && internal->memId >= 0)
+        if (internal->mem != nullptr && internal->memId >= 0) {
+            if (internal->renderer && internal->renderer->valid() && internal->renderer->internal && internal->renderer->internal->context) {
+                sceGxmFinish(internal->renderer->internal->context);
+            }
             _memory_free_gpu(internal->mem, internal->memId);
+        }
 
         delete internal;
     }
@@ -55,8 +60,12 @@ namespace ryo {
             return *this;
 
         if (internal) {
-            if (internal->mem != nullptr && internal->memId >= 0)
+            if (internal->mem != nullptr && internal->memId >= 0) {
+                if (internal->renderer && internal->renderer->valid() && internal->renderer->internal && internal->renderer->internal->context) {
+                    sceGxmFinish(internal->renderer->internal->context);
+                }
                 _memory_free_gpu(internal->mem, internal->memId);
+            }
 
             delete internal;
         }

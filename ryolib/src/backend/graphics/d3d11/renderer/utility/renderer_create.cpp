@@ -53,9 +53,23 @@ namespace ryo {
         }
 
         if (!_renderer_create_window_targets(*intern, config.width, config.height) ||
-            !_renderer_create_depth_stencil_state(*intern)) {
+            !_renderer_create_depth_stencil_state(*intern) ||
+            !_renderer_create_constant_buffers(*intern)) {
             _renderer_release_window_targets(*intern);
-            if (intern->depthState) intern->depthState->Release();
+            if (intern->vertexCB) intern->vertexCB->Release();
+            if (intern->pixelCB) intern->pixelCB->Release();
+
+            if (intern->stencilWriteState) intern->stencilWriteState->Release();
+            for (int i = 0; i < 6; i++) {
+                if (i < 3) {
+                    if (intern->depthStates[i])
+                        intern->depthStates[i]->Release();
+                } else {
+                    if (intern->stencilTestStates[i - 3])
+                        intern->stencilTestStates[i - 3]->Release();
+                }
+            }
+
             if (intern->swapChain) intern->swapChain->Release();
             if (intern->context) intern->context->Release();
             if (intern->device) intern->device->Release();
