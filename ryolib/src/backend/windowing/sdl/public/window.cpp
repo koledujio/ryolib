@@ -435,8 +435,8 @@ namespace ryo {
 
         bool fail = false;
 
-        unsigned int added = flags | ~internal->flags;
-        unsigned int removed = internal->flags | ~flags;
+        unsigned int added = flags & ~internal->flags;
+        unsigned int removed = internal->flags & ~flags;
 
         if ((added & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE) {
             if (!SDL_SetWindowResizable(internal->sdlWindow, true))
