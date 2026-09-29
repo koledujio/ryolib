@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 #include "SDL3/SDL_error.h"
 #include "SDL3/SDL_events.h"
@@ -18,7 +19,7 @@ namespace ryo {
     ) {
         RYO_ENSURE_VOID(title != nullptr, "Null title string pointer provided");
 
-        PlatformCapabilities capabilities = _platform_get_capabilities();
+        const PlatformCapabilities& capabilities = capabilities_get();
 
         uint64_t sdlFlags = 0;
 
@@ -36,11 +37,6 @@ namespace ryo {
                 sdlFlags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
         }
 
-        if (window_count == 4294967295) {
-            error_set("Maximum number of windows reached");
-            return;
-        }
-
         if (!sdl_initialized) {
             if (!_sdl_initialize()) {
                 error_set("Failed to initialize SDL: %s", SDL_GetError());
@@ -54,6 +50,12 @@ namespace ryo {
 
         SDL_Window* window = SDL_CreateWindow(title, static_cast<int>(newWidth), static_cast<int>(newHeight), sdlFlags);
 
+        SDL_WindowID id = SDL_GetWindowID(window);
+        if (id == 0) {
+            SDL_DestroyWindow(window);
+            window = nullptr;
+        }
+
         if (!window) {
             error_set("Failed to create SDL window: %s", SDL_GetError());
 
@@ -65,10 +67,10 @@ namespace ryo {
 
         InternalWindow* intern = new InternalWindow;
         intern->sdlWindow = window;
-        intern->capabilities = capabilities;
         intern->title = capabilities.windowTitlesSupported ? title : nullptr;
         intern->flags = capabilities.deviceType == DEVICE_DESKTOP ? flags : WINDOW_FLAG_NONE;
         intern->orientations = capabilities.fixedDefaultOrientation ? ORIENTATION_NONE : allowedOrientations;
+        intern->id = static_cast<WindowID>(id);
 
         internal = intern;
 
@@ -123,15 +125,18 @@ namespace ryo {
     }
 
     bool Window::event_poll(Event& event) {
-        RYO_ENSURE(valid(), false, "Invalid window");
+        if (!sdl_initialized)
+            return false;
 
-        SDL_Event& sdlEvent = internal->event;
-
+        SDL_Event sdlEvent;
         if (!SDL_PollEvent(&sdlEvent))
             return false;
 
         event = Event{};
         event.type = EVENT_NONE;
+        event.windowId = 0;
+
+        const PlatformCapabilities& capabilities = capabilities_get();
 
         switch (sdlEvent.type) {
             case SDL_EVENT_QUIT:
@@ -140,8 +145,9 @@ namespace ryo {
             
             case SDL_EVENT_WINDOW_RESIZED:
                 event.type = EVENT_WINDOW_RESIZED;
-                event.data.window.width = sdlEvent.window.data1;
-                event.data.window.height = sdlEvent.window.data2;
+                event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
+                event.data.window.width = static_cast<unsigned int>(sdlEvent.window.data1);
+                event.data.window.height = static_cast<unsigned int>(sdlEvent.window.data2);
                 break;
             
             case SDL_EVENT_GAMEPAD_ADDED:
@@ -156,13 +162,13 @@ namespace ryo {
             
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
                 event.type = EVENT_PAD_BUTTON_DOWN;
-                event.data.pad.id = sdlEvent.gdevice.which;
+                event.data.pad.id = sdlEvent.gbutton.which;
                 event.data.pad.button = _gamepad_get_ryo_button(sdlEvent.gbutton.button);
                 break;
             
             case SDL_EVENT_GAMEPAD_BUTTON_UP:
                 event.type = EVENT_PAD_BUTTON_UP;
-                event.data.pad.id = sdlEvent.gdevice.which;
+                event.data.pad.id = sdlEvent.gbutton.which;
                 event.data.pad.button = _gamepad_get_ryo_button(sdlEvent.gbutton.button);
                 break;
             
@@ -175,33 +181,38 @@ namespace ryo {
             
             case SDL_EVENT_KEY_DOWN:
                 event.type = EVENT_KEY_DOWN;
+                event.windowId = static_cast<WindowID>(sdlEvent.key.windowID);
                 event.data.key.code = _keyboard_get_ryo_key(sdlEvent.key.scancode);
                 event.data.key.isRepeat = sdlEvent.key.repeat;
                 break;
             
             case SDL_EVENT_KEY_UP:
                 event.type = EVENT_KEY_UP;
+                event.windowId = static_cast<WindowID>(sdlEvent.key.windowID);
                 event.data.key.code = _keyboard_get_ryo_key(sdlEvent.key.scancode);
                 event.data.key.isRepeat = sdlEvent.key.repeat;
                 break;
             
             case SDL_EVENT_FINGER_DOWN:
                 event.type = EVENT_TOUCH_BEGIN;
-                event.data.touch.fingerId = sdlEvent.tfinger.fingerID;
+                event.windowId = static_cast<WindowID>(sdlEvent.tfinger.windowID);
+                event.data.touch.fingerId = static_cast<unsigned int>(sdlEvent.tfinger.fingerID);
                 event.data.touch.x = sdlEvent.tfinger.x * 2.0f - 1.0f;
                 event.data.touch.y = sdlEvent.tfinger.y * 2.0f - 1.0f;
                 break;
 
             case SDL_EVENT_FINGER_UP:
                 event.type = EVENT_TOUCH_END;
-                event.data.touch.fingerId = sdlEvent.tfinger.fingerID;
+                event.windowId = static_cast<WindowID>(sdlEvent.tfinger.windowID);
+                event.data.touch.fingerId = static_cast<unsigned int>(sdlEvent.tfinger.fingerID);
                 event.data.touch.x = sdlEvent.tfinger.x * 2.0f - 1.0f;
                 event.data.touch.y = sdlEvent.tfinger.y * 2.0f - 1.0f;
                 break;
 
             case SDL_EVENT_FINGER_MOTION:
                 event.type = EVENT_TOUCH_MOVE;
-                event.data.touch.fingerId = sdlEvent.tfinger.fingerID;
+                event.windowId = static_cast<WindowID>(sdlEvent.tfinger.windowID);
+                event.data.touch.fingerId = static_cast<unsigned int>(sdlEvent.tfinger.fingerID);
                 event.data.touch.x = sdlEvent.tfinger.x * 2.0f - 1.0f;
                 event.data.touch.y = sdlEvent.tfinger.y * 2.0f - 1.0f;
                 event.data.touch.deltaX = sdlEvent.tfinger.dx * 2.0f;
@@ -210,15 +221,16 @@ namespace ryo {
 
             case SDL_EVENT_FINGER_CANCELED: // TODO: add cancelled native event or property for EVENT_TOUCH_END
                 event.type = EVENT_TOUCH_END;
-                event.data.touch.fingerId = sdlEvent.tfinger.fingerID;
+                event.windowId = static_cast<WindowID>(sdlEvent.tfinger.windowID);
+                event.data.touch.fingerId = static_cast<unsigned int>(sdlEvent.tfinger.fingerID);
                 event.data.touch.x = sdlEvent.tfinger.x * 2.0f - 1.0f;
                 event.data.touch.y = sdlEvent.tfinger.y * 2.0f - 1.0f;
                 break;
             
             case SDL_EVENT_DISPLAY_ORIENTATION:
-                if (!internal->capabilities.fixedDefaultOrientation) {
+                if (!capabilities.fixedDefaultOrientation) {
                     event.type = EVENT_DEVICE_ORIENTATION_CHANGED;
-                    switch ((SDL_DisplayOrientation)sdlEvent.display.data1) {
+                    switch (static_cast<SDL_DisplayOrientation>(sdlEvent.display.data1)) {
                         case SDL_ORIENTATION_LANDSCAPE:
                             event.data.orientation = ORIENTATION_LANDSCAPE;
                             break;
@@ -243,27 +255,31 @@ namespace ryo {
                 break;
             
             case SDL_EVENT_WINDOW_FOCUS_GAINED:
-                if (internal->capabilities.deviceType == DEVICE_DESKTOP)
+                if (capabilities.deviceType == DEVICE_DESKTOP) {
                     event.type = EVENT_PLATFORM_DESKTOP_FOCUSED;
+                    event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
+                }
                 break;
             
             case SDL_EVENT_WINDOW_FOCUS_LOST:
-                if (internal->capabilities.deviceType == DEVICE_DESKTOP)
+                if (capabilities.deviceType == DEVICE_DESKTOP) {
                     event.type = EVENT_PLATFORM_DESKTOP_UNFOCUSED;
+                    event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
+                }
                 break;
             
             case SDL_EVENT_WILL_ENTER_BACKGROUND:
-                if (internal->capabilities.deviceType == DEVICE_MOBILE)
+                if (capabilities.deviceType == DEVICE_MOBILE)
                     event.type = EVENT_PLATFORM_MOBILE_WILL_ENTER_BACKGROUND;
                 break;
             
             case SDL_EVENT_WILL_ENTER_FOREGROUND:
-                if (internal->capabilities.deviceType == DEVICE_MOBILE)
+                if (capabilities.deviceType == DEVICE_MOBILE)
                     event.type = EVENT_PLATFORM_MOBILE_WILL_ENTER_FOREGROUND;
                 break;
             
             case SDL_EVENT_LOW_MEMORY:
-                if (internal->capabilities.deviceType == DEVICE_MOBILE)
+                if (capabilities.deviceType == DEVICE_MOBILE)
                     event.type = EVENT_PLATFORM_MOBILE_LOW_MEMORY;
                 break;
 
@@ -274,16 +290,23 @@ namespace ryo {
         return true;
     }
 
+    WindowID Window::id_get() const {
+        RYO_ENSURE(valid(), 0, "Invalid window");
+
+        return internal->id;
+    }
+
     void* Window::nwh_get() const {
         RYO_ENSURE(valid(), nullptr, "Invalid window");
+
+        const PlatformCapabilities& capabilities = capabilities_get();
+        if (!capabilities.nativeWindowHandleSupported)
+            return nullptr;
 
         SDL_PropertiesID props = SDL_GetWindowProperties(internal->sdlWindow);
         if (props == 0) {
             return nullptr;
         }
-
-        if (!internal->capabilities.nativeWindowHandleSupported)
-            return nullptr;
 
         #if defined(RYO_WIN32)
         return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
@@ -297,7 +320,8 @@ namespace ryo {
     const char* Window::title_get() const {
         RYO_ENSURE(valid(), nullptr, "Invalid window");
 
-        if (!internal->capabilities.windowTitlesSupported)
+        const PlatformCapabilities& capabilities = capabilities_get();
+        if (!capabilities.windowTitlesSupported)
             return nullptr;
 
         return internal->title;
@@ -306,7 +330,8 @@ namespace ryo {
     bool Window::title_set(const char* title) {
         RYO_ENSURE(valid(), false, "Invalid window");
 
-        if (!internal->capabilities.windowTitlesSupported)
+        const PlatformCapabilities& capabilities = capabilities_get();
+        if (!capabilities.windowTitlesSupported)
             return false;
 
         if (!SDL_SetWindowTitle(internal->sdlWindow, title))
@@ -332,14 +357,14 @@ namespace ryo {
 
     bool Window::size_set(unsigned int width, unsigned int height) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
+        RYO_ENSURE(capabilities_get().sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
 
         return SDL_SetWindowSize(internal->sdlWindow, static_cast<int>(width), static_cast<int>(height));
     }
 
     bool Window::size_min_get(unsigned int& outWidth, unsigned int& outHeight) const {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
+        RYO_ENSURE(capabilities_get().sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
 
         int width, height;
         if (!SDL_GetWindowMinimumSize(internal->sdlWindow, &width, &height))
@@ -353,14 +378,14 @@ namespace ryo {
 
     bool Window::size_min_set(unsigned int width, unsigned int height) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
+        RYO_ENSURE(capabilities_get().sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
 
         return SDL_SetWindowMinimumSize(internal->sdlWindow, static_cast<int>(width), static_cast<int>(height));
     }
 
     bool Window::size_max_get(unsigned int& outWidth, unsigned int& outHeight) const {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
+        RYO_ENSURE(capabilities_get().sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
 
         int width, height;
         if (!SDL_GetWindowMaximumSize(internal->sdlWindow, &width, &height))
@@ -374,7 +399,7 @@ namespace ryo {
 
     bool Window::size_max_set(unsigned int width, unsigned int height) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
+        RYO_ENSURE(capabilities_get().sizeManagementType == SIZE_FREE_RESIZABLE, false, "Platform doesn't support resizing windows");
 
         return SDL_SetWindowMaximumSize(internal->sdlWindow, static_cast<int>(width), static_cast<int>(height));
     }
@@ -424,14 +449,14 @@ namespace ryo {
 
     unsigned int Window::flags_get() const {
         RYO_ENSURE(valid(), WINDOW_FLAG_NONE, "Invalid window");
-        RYO_ENSURE(internal->capabilities.deviceType == DEVICE_DESKTOP, WINDOW_FLAG_NONE, "Window flags aren't supported for this platform");
+        RYO_ENSURE(capabilities_get().deviceType == DEVICE_DESKTOP, WINDOW_FLAG_NONE, "Window flags aren't supported for this platform");
 
         return internal->flags;
     }
 
     bool Window::flags_set(unsigned int flags) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.deviceType == DEVICE_DESKTOP, false, "Window flags aren't supported for this platform");
+        RYO_ENSURE(capabilities_get().deviceType == DEVICE_DESKTOP, false, "Window flags aren't supported for this platform");
 
         bool fail = false;
 
@@ -472,12 +497,12 @@ namespace ryo {
     unsigned int Window::orientations_get() const {
         RYO_ENSURE(valid(), ORIENTATION_NONE, "Invalid window");
 
-        return internal->capabilities.fixedDefaultOrientation ? ORIENTATION_NONE : internal->orientations;
+        return capabilities_get().fixedDefaultOrientation ? ORIENTATION_NONE : internal->orientations;
     }
 
     bool Window::orientations_set(unsigned int orientations) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(internal->capabilities.fixedDefaultOrientation == false, false, "Platform doesn't support orientations other than default");
+        RYO_ENSURE(capabilities_get().fixedDefaultOrientation == false, false, "Platform doesn't support orientations other than default");
 
         char hintString[256] = "";
 
@@ -494,11 +519,6 @@ namespace ryo {
             strcat(hintString, "PortraitUpsideDown");
 
         size_t len = strlen(hintString);
-        // if (len < 2) {
-        //     hintString = "LandscapeLeft ";
-        //     len = strlen(hintString);
-        // }
-
         if (len > 0)
             hintString[len - 1] = '\0';
 
@@ -513,7 +533,7 @@ namespace ryo {
     unsigned int Window::orientation_get() const {
         RYO_ENSURE(valid(), ORIENTATION_NONE, "Invalid window");
         
-        if (internal->capabilities.fixedDefaultOrientation)
+        if (capabilities_get().fixedDefaultOrientation)
             return ORIENTATION_NONE;
 
         SDL_DisplayID displayId = SDL_GetDisplayForWindow(internal->sdlWindow);
@@ -540,7 +560,7 @@ namespace ryo {
         }
     }
 
-    const PlatformCapabilities* Window::capabilities_get() const {
-        return internal != nullptr ? &internal->capabilities : nullptr;
+    const PlatformCapabilities& Window::capabilities_get() {
+        return _platform_get_capabilities();
     }
 }

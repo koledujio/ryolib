@@ -257,7 +257,7 @@ int main() {
     bool running = true;
 
     while (running) {
-        while (window.event_poll(windowEvent)) {
+        while (ryo::Window::event_poll(windowEvent)) {
             if (windowEvent.type == ryo::EVENT_PAD_ADDED) {
                 if (!gamepad) {
                     gamepad = new ryo::Gamepad(windowEvent.data.pad.id);

@@ -4,6 +4,12 @@
 
 namespace ryo {
     /**
+     * Additional Types.
+     */
+
+    using WindowID = uint32_t;
+
+    /**
      * Forward declarations.
      */
 
@@ -564,7 +570,7 @@ namespace ryo {
          */
         EVENT_PLATFORM_MOBILE_WILL_ENTER_BACKGROUND,
 
-        /**
+        /** 
          * @brief Window will enter foreground.
          *
          * Triggered when the window will enter foreground.
@@ -606,6 +612,7 @@ namespace ryo {
      */
     struct Event {
         EventType type = EVENT_NONE; ///< Type of event
+        WindowID windowId = 0; ///< ID of the window this event occured on (0 for global/system events).
 
         union {
             struct {
@@ -848,21 +855,35 @@ namespace ryo {
         bool valid() const;
 
         /**
-         * @brief Polls the next event from the window's event queue.
+         * @brief Polls the next event from the event queue.
          *
-         * TODO: make this static since it's not per-window.
+         * Retrieves pending events from the platform's event queue and populates @p event.
+         * For window-specific events (e.g., @ref EventType::EVENT_WINDOW_RESIZED, @ref EventType::EVENT_KEY_DOWN,
+         * @ref EventType::EVENT_TOUCH_BEGIN), @ref Event::windowId contains the corresponding window's ID.
+         * For system-wide/global events (e.g., @ref EventType::EVENT_QUIT, @ref EventType::EVENT_PAD_ADDED),
+         * @ref Event::windowId is set to 0.
          *
          * @param[out] event Reference to an @ref Event the new event will be copied into. 
          *
-         * @pre The window must be valid (@ref valid() == true).
-         *
-         * @return True if an event has been found and assigned, false if the window is invalid or the end
-         * of the queue has been reached.
+         * @return True if an event has been found and assigned, false if the end of the queue has been reached.
          *
          * @see Event
+         * @see WindowID
+         */
+        static bool event_poll(Event& event);
+
+        /**
+         * @brief Gets the window's specific id.
+         *
+         * The @ref WindowID is specific per-window and set on creation.
+         *
+         * @pre The window must be valid (@ref valid() == true).
+         *
+         * @return The window's id, or 0 if the window is invalid.
+         *
          * @see valid()
          */
-        bool event_poll(Event& event);
+        WindowID id_get() const;
 
         /**
          * @brief Gets the window's native window handle.
@@ -1310,23 +1331,17 @@ namespace ryo {
         unsigned int orientation_get() const;
 
         /**
-         * @brief Gets the platform's capabilites.
+         * @brief Gets the platform's capabilities.
          *
          * Gets the current platform's capabilities.
-         * The capabilities are fixed and should be called after window creation to gather info about
-         * the device and platform.
+         * The capabilities are fixed and can be called before or after window creation to
+         * gather info about the device and platform.
          *
-         * @pre The window must be valid (@ref valid() == true).
-         *
-         * @return Pointer to the platform's capabilities struct, or null pointer if invalid window.
-         *
-         * @note On failure, an error message is set and can be retrieved via @ref error_get().
+         * @return Const reference to the platform's capabilities struct.
          *
          * @see PlatformCapabilities
-         * @see valid()
-         * @see error_get()
          */
-        const PlatformCapabilities* capabilities_get() const;
+        static const PlatformCapabilities& capabilities_get();
     };
 
     struct Gamepad {
