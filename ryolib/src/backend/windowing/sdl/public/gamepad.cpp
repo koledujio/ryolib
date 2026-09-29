@@ -18,8 +18,8 @@ namespace ryo {
         internalGamepad->sdlGamepad = sdlGamepad;
 
         internal = internalGamepad;
-        type = _gamepad_get_ryo_type(sdlType);
-        this->id = id;
+        internal->type = _gamepad_get_ryo_type(sdlType);
+        internal->id = id;
     }
 
     Gamepad::~Gamepad() {
@@ -32,10 +32,8 @@ namespace ryo {
         delete internal;
     }
 
-    Gamepad::Gamepad(Gamepad&& other) : internal(other.internal), id(other.id), type(other.type) {
+    Gamepad::Gamepad(Gamepad&& other) : internal(other.internal) {
         other.internal = nullptr;
-        other.id = 0;
-        other.type = PAD_TYPE_UNKNOWN;
     }
 
     Gamepad& Gamepad::operator=(Gamepad&& other) {
@@ -50,12 +48,7 @@ namespace ryo {
         }
 
         internal = other.internal;
-        id = other.id;
-        type = other.type;
-
         other.internal = nullptr;
-        other.id = 0;
-        other.type = PAD_TYPE_UNKNOWN;
 
         return *this;
     }
@@ -70,6 +63,18 @@ namespace ryo {
         const char* name = SDL_GetGamepadName(internal->sdlGamepad);
 
         return name ? name : "Unknown Gamepad";
+    }
+
+    int Gamepad::id_get() const {
+        RYO_ENSURE(valid(), -1, "Invalid gamepad");
+
+        return internal->id;
+    }
+
+    GamepadType Gamepad::type_get() const {
+        RYO_ENSURE(valid(), PAD_TYPE_UNKNOWN, "Invalid gamepad");
+
+        return internal->type;
     }
 
     bool Gamepad::rumble_set(uint16_t lowFreq, uint16_t highFreq, uint32_t durationMs) const {

@@ -29,6 +29,8 @@ if (RYO_SAFETY)
 endif()
 
 if(APPLE)
+    target_compile_definitions(ryolib PUBLIC RYO_APPLE_MAC=1)
+
     include(graphics/MetalBackend)
     setup_metal_backend(ryolib)
 
@@ -44,6 +46,8 @@ if(APPLE)
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
 elseif(WIN32)
+    target_compile_definitions(ryolib PUBLIC RYO_WIN32=1)
+
     include(graphics/D3D11Backend)
     setup_d3d11_backend(ryolib)
 
@@ -59,6 +63,8 @@ elseif(WIN32)
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
 elseif(VITA)
+    target_compile_definitions(ryolib PUBLIC RYO_VITA=1)
+
     include (${VITASDK}/share/vita.cmake)
 
     target_link_libraries(ryolib PRIVATE
