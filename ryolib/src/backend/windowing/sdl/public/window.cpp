@@ -506,6 +506,8 @@ namespace ryo {
             return false;
 
         internal->orientations = orientations;
+
+        return true;
     }
 
     unsigned int Window::orientation_get() const {
