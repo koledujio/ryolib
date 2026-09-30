@@ -7,6 +7,9 @@
 #include <SDL3/SDL.h>
 
 namespace ryo {
+    struct InternalApplication {
+    };
+
     struct InternalWindow {
         SDL_Window* sdlWindow = nullptr;
         const char* title = nullptr;

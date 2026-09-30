@@ -13,6 +13,7 @@ namespace ryo {
      * Forward declarations.
      */
 
+    struct InternalApplication;
     struct InternalWindow;
     struct InternalGamepad;
 
@@ -773,6 +774,85 @@ namespace ryo {
      * Main class interfaces.
      */
 
+    struct Application {
+        InternalApplication* internal = nullptr;
+
+        /**
+         * @brief Initializes the application and underlying platform subsystems.
+         *
+         * Initializes the platform subsystems (such as windowing, events, and gamepad input).
+         * Must be created before creating any windows or polling events.
+         *
+         * @warning Always verify construction success using @ref valid(). In case of failure,
+         * call @ref error_get() for error diagnostics and discard the object.
+         *
+         * @see valid()
+         * @see ~Application()
+         * @see event_poll()
+         * @see capabilities_get()
+         */
+        Application();
+
+        /**
+         * @brief Terminates the application and underlying platform subsystems.
+         *
+         * Closes platform subsystems and releases all associated resources.
+         *
+         * @see Application()
+         */
+        ~Application();
+
+        Application(const Application&) = delete;
+        Application& operator=(const Application&) = delete;
+
+        Application(Application&&);
+        Application& operator=(Application&&);
+
+        /**
+         * @brief Checks if the application subsystem is valid and initialized.
+         *
+         * @return True if initialized successfully, false otherwise.
+         *
+         * @see Application()
+         */
+        bool valid() const;
+
+        /**
+         * @brief Polls the next event from the application event queue.
+         *
+         * Retrieves pending events from the platform's event queue and populates @p event.
+         * For window-specific events (e.g., @ref EventType::EVENT_WINDOW_RESIZED, @ref EventType::EVENT_KEY_DOWN,
+         * @ref EventType::EVENT_TOUCH_BEGIN), @ref Event::windowId contains the corresponding window's ID.
+         * For system-wide/global events (e.g., @ref EventType::EVENT_QUIT, @ref EventType::EVENT_PAD_ADDED),
+         * @ref Event::windowId is set to 0.
+         *
+         * @param[out] event Reference to an @ref Event the new event will be copied into. 
+         *
+         * @pre The application must be valid (@ref valid() == true).
+         *
+         * @return True if an event has been found and assigned, false if the end of the queue has been reached or invalid application.
+         *
+         * @see Event
+         * @see WindowID
+         * @see valid()
+         */
+        bool event_poll(Event& event) const;
+
+        /**
+         * @brief Gets the platform's capabilities.
+         *
+         * Gets the platform capabilities for the current platform and device.
+         *
+         * @pre The application must be valid (@ref valid() == true).
+         *
+         * @return Const reference to the platform's @ref PlatformCapabilities struct.
+         *
+         * @see PlatformCapabilities
+         * @see valid()
+         */
+        const PlatformCapabilities& capabilities_get() const;
+    };
+
     struct Window {
         InternalWindow* internal = nullptr;
 
@@ -780,15 +860,15 @@ namespace ryo {
          * @brief Creates a new application window with specified properties
          *
          * Initializes a new native OS window or connects to the platform framebuffer.
-         * If there's no other valid window, this function will attempt to initialize
-         * the required underlying subsystems.
          *
+         * @param[in] app                  Reference to the active @ref Application instance.
          * @param[in] title                UTF-8 window title string.
          * @param[in] width                Requested width in logical pixels.
          * @param[in] height               Requested height in logical pixels.
          * @param[in] flags                Bitmask combination of @ref WindowFlags.
          * @param[in] allowedOrientations  Bitmask combination of @ref DisplayOrientations flags.
          *
+         * @pre The @p app must be valid (@ref Application::valid() == true).
          * @pre The @p title pointer must not be null.
          *
          * @note Sizing behavior is dictated by @ref PlatformCapabilities::sizeManagementType.
@@ -805,16 +885,17 @@ namespace ryo {
          * @warning Always verify construction success using @ref valid(). In case of failure,
          * call @ref error_get() for error diagnostics and discard the object.
          *
+         * @see Application
          * @see PlatformCapabilities
          * @see DisplayOrientations
          * @see SizeManagementType
          * @see valid()
          * @see error_get()
          * @see ~Window()
-         * @see event_poll()
          * @see nwh_get()
          */
         Window(
+            const Application& app,
             const char* title,
             unsigned int width,
             unsigned int height,
@@ -826,8 +907,6 @@ namespace ryo {
          * @brief Destroys the window and releases its resources.
          *
          * Closes the native OS window handles and frees associated internal memory.
-         * If this was the last open window, the underlying subsystems are
-         * automatically terminated.
          *
          * @note If the window is invalid or in an moved-from state, this operation safely no-ops.
          *
@@ -853,24 +932,6 @@ namespace ryo {
          * @see Window()
          */
         bool valid() const;
-
-        /**
-         * @brief Polls the next event from the event queue.
-         *
-         * Retrieves pending events from the platform's event queue and populates @p event.
-         * For window-specific events (e.g., @ref EventType::EVENT_WINDOW_RESIZED, @ref EventType::EVENT_KEY_DOWN,
-         * @ref EventType::EVENT_TOUCH_BEGIN), @ref Event::windowId contains the corresponding window's ID.
-         * For system-wide/global events (e.g., @ref EventType::EVENT_QUIT, @ref EventType::EVENT_PAD_ADDED),
-         * @ref Event::windowId is set to 0.
-         *
-         * @param[out] event Reference to an @ref Event the new event will be copied into. 
-         *
-         * @return True if an event has been found and assigned, false if the end of the queue has been reached.
-         *
-         * @see Event
-         * @see WindowID
-         */
-        static bool event_poll(Event& event);
 
         /**
          * @brief Gets the window's specific id.
@@ -1329,19 +1390,6 @@ namespace ryo {
          * @see orientations_set()
          */
         unsigned int orientation_get() const;
-
-        /**
-         * @brief Gets the platform's capabilities.
-         *
-         * Gets the current platform's capabilities.
-         * The capabilities are fixed and can be called before or after window creation to
-         * gather info about the device and platform.
-         *
-         * @return Const reference to the platform's capabilities struct.
-         *
-         * @see PlatformCapabilities
-         */
-        static const PlatformCapabilities& capabilities_get();
     };
 
     struct Gamepad {
@@ -1350,20 +1398,21 @@ namespace ryo {
         /**
          * @brief Connects to a gamepad using a gamepad id.
          *
-         * TODO: modify the event docs to specify that gamepad ids are the same across windows and only one gamepad for each id should be created, not per window.
+         * @pre The @p app must be valid (@ref Application::valid() == true).
+         * @pre The gamepad at the specified id must be available to connect to.
          *
-         * @pre The gamepad at the specified id must be available to connect to by the window
-         *
-         * @param[in] id Gamepad id of the requested gamepad.
+         * @param[in] app Reference to the active @ref Application instance.
+         * @param[in] id  Gamepad id of the requested gamepad.
          *
          * @warning Always verify construction success using @ref valid(). In case of failure,
          * call @ref error_get() for error diagnostics and discard the object.
          *
+         * @see Application
          * @see ~Gamepad()
          * @see valid()
          * @see error_get()
          */
-        Gamepad(int id);
+        Gamepad(const Application& app, int id);
 
         /**
          * @brief Disconnects from a gamepad.

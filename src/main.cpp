@@ -149,7 +149,13 @@ int main() {
     height = 720;
 #endif
 
-    ryo::Window window("Ryolib demonstration menu", width, height);
+    ryo::Application app;
+    if (!app.valid()) {
+        printf("Failed to initialize application: %s\n", ryo::error_get());
+        return 0;
+    }
+
+    ryo::Window window(app, "Ryolib demonstration menu", width, height);
     if (!window.valid()) {
         printf("Failed to create window: %s", ryo::error_get());
         return 0;
@@ -257,10 +263,10 @@ int main() {
     bool running = true;
 
     while (running) {
-        while (ryo::Window::event_poll(windowEvent)) {
+        while (app.event_poll(windowEvent)) {
             if (windowEvent.type == ryo::EVENT_PAD_ADDED) {
                 if (!gamepad) {
-                    gamepad = new ryo::Gamepad(windowEvent.data.pad.id);
+                    gamepad = new ryo::Gamepad(app, windowEvent.data.pad.id);
                     if (!gamepad->valid()) {
                         delete gamepad;
                         gamepad = nullptr;

@@ -5,7 +5,9 @@
 #include "SDL3/SDL_sensor.h"
 
 namespace ryo {
-    Gamepad::Gamepad(int id) {
+    Gamepad::Gamepad(const Application& app, int id) {
+        RYO_ENSURE_VOID(app.valid(), "Invalid application instance provided for gamepad connection");
+
         SDL_Gamepad* sdlGamepad = SDL_OpenGamepad(id);
         if (!sdlGamepad) {
             error_set("Failed to open SDL gamepad: %s", SDL_GetError());
