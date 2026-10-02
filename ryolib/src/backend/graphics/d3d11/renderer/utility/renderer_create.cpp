@@ -5,9 +5,18 @@ namespace ryo {
         HWND hwnd = static_cast<HWND>(config.nativeWindowHandle);
         RYO_ASSERT(hwnd, nullptr, "Failed to get native window handle HWND");
 
+        float contentScale = config.contentScale;
+        if (contentScale <= 0.0f)
+            contentScale = 1.0f;
+
+        // render resolution = logical size * content scale
+        int width = static_cast<int>(static_cast<float>(config.width) * contentScale);
+        int height = static_cast<int>(static_cast<float>(config.height) * contentScale);
+
         InternalRenderer* intern = new InternalRenderer;
-        intern->width = config.width;
-        intern->height = config.height;
+        intern->contentScale = contentScale;
+        intern->width = width;
+        intern->height = height;
 
         intern->device = device;
         intern->device->AddRef();
@@ -26,8 +35,8 @@ namespace ryo {
 
         DXGI_SWAP_CHAIN_DESC scd = {};
         scd.BufferCount = 1;
-        scd.BufferDesc.Width = config.width;
-        scd.BufferDesc.Height = config.height;
+        scd.BufferDesc.Width = width;
+        scd.BufferDesc.Height = height;
         scd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // same as metal
         scd.BufferDesc.RefreshRate.Numerator = 60;
         scd.BufferDesc.RefreshRate.Denominator = 1;
@@ -52,7 +61,7 @@ namespace ryo {
             return nullptr;
         }
 
-        if (!_renderer_create_window_targets(*intern, config.width, config.height) ||
+        if (!_renderer_create_window_targets(*intern, width, height) ||
             !_renderer_create_depth_stencil_state(*intern) ||
             !_renderer_create_constant_buffers(*intern)) {
             _renderer_release_window_targets(*intern);

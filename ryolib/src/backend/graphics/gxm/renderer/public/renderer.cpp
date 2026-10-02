@@ -101,6 +101,15 @@ namespace ryo {
         ); // TODO: Improve this later, but it's fine enough for now
     }
 
+    bool Renderer::size_get(unsigned int& outWidth, unsigned int& outHeight) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        outWidth = static_cast<unsigned int>(internal->width);
+        outHeight = static_cast<unsigned int>(internal->height);
+
+        return true;
+    }
+
     bool Renderer::resize(unsigned int width, unsigned int height) {
         // TODO: figure out what to do with this function, for now nothing
         return true;

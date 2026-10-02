@@ -29,7 +29,11 @@ if (RYO_SAFETY)
 endif()
 
 if(APPLE)
-    target_compile_definitions(ryolib PUBLIC RYO_APPLE_MAC=1)
+    if(IOS)
+        target_compile_definitions(ryolib PUBLIC RYO_APPLE_IOS=1)
+    else()
+        target_compile_definitions(ryolib PUBLIC RYO_APPLE_MAC=1)
+    endif()
 
     include(graphics/MetalBackend)
     setup_metal_backend(ryolib)

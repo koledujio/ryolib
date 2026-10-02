@@ -18,7 +18,11 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#if defined(RYO_APPLE_IOS) || TARGET_OS_IPHONE
+#import <UIKit/UIKit.h>
+#else
 #import <AppKit/AppKit.h>
+#endif
 #import <simd/simd.h>
 
 #include "ryolib/templates.h"
@@ -29,6 +33,7 @@ namespace ryo {
         id<MTLCommandQueue> queue = nil;
         int width = 0;
         int height = 0;
+        float contentScale = 1.0f;
 
         id<MTLLibrary> shaderLibrary = nil;
         Pipeline* defaultColorPipeline = nullptr;
@@ -122,4 +127,6 @@ namespace ryo {
 
     Matrix4 _compute_camera_vp(const Camera& camera, float aspect);
     void _draw_get_target_size(const InternalRenderer& renderer, int& width, int& height);
+    void _renderer_set_layer_size(InternalRenderer& intern, int width, int height);
+    void _renderer_sync_layer_size(InternalRenderer& intern);
 }

@@ -52,7 +52,7 @@ namespace ryo {
         id<MTLRenderPipelineState> pso = [device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
 
         if (error) {
-            error_set("Failed to create pipeline: %s", error.localizedDescription);
+            error_set("Failed to create pipeline: %s", error.localizedDescription.UTF8String);
             [vert release];
             [frag release];
             [pipelineDesc release];

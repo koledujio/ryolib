@@ -16,6 +16,7 @@ namespace ryo {
             caps.touchSupport = false;
             caps.windowTitlesSupported = true;
             caps.nativeWindowHandleSupported = true;
+            caps.quitSupported = true;
 #elif defined(RYO_WIN32)
             caps.platformType = PLATFORM_WINDOWS;
             caps.deviceType = DEVICE_DESKTOP;
@@ -28,6 +29,7 @@ namespace ryo {
             caps.touchSupport = true;
             caps.windowTitlesSupported = true;
             caps.nativeWindowHandleSupported = true;
+            caps.quitSupported = true;
 #elif defined(RYO_VITA)
             caps.platformType = PLATFORM_VITA;
             caps.deviceType = DEVICE_CONSOLE;
@@ -40,6 +42,21 @@ namespace ryo {
             caps.touchSupport = true;
             caps.windowTitlesSupported = false;
             caps.nativeWindowHandleSupported = false;
+            caps.quitSupported = true;
+#elif defined(RYO_APPLE_IOS)
+            caps.platformType = PLATFORM_IOS;
+            caps.deviceType = DEVICE_MOBILE;
+            caps.sizeManagementType = SIZE_MANAGED_RESIZABLE;
+            caps.isTablet = _platform_is_tablet();
+            caps.fixedDefaultOrientation = false;
+            caps.supportsMultipleWindows = false;
+            caps.controllerSupport = true;
+            caps.keyboardSupport = true;
+            caps.mouseSupport = true;
+            caps.touchSupport = true;
+            caps.windowTitlesSupported = false;
+            caps.nativeWindowHandleSupported = true;
+            caps.quitSupported = false;
 #else
             #error "Capabilities not defined for target"
 #endif

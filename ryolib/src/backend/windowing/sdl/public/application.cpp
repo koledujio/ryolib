@@ -75,6 +75,11 @@ namespace ryo {
                 event.data.window.height = static_cast<unsigned int>(sdlEvent.window.data2);
                 break;
             
+            case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+                event.type = EVENT_WINDOW_HIDPI_SCALE_CHANGED;
+                event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
+                break;
+            
             case SDL_EVENT_GAMEPAD_ADDED:
                 event.type = EVENT_PAD_ADDED;
                 event.data.pad.id = sdlEvent.gdevice.which;

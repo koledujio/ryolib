@@ -22,7 +22,7 @@ set(RYO_SAFETY ON CACHE BOOL "" FORCE)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(RYO_DEBUG ON CACHE BOOL "" FORCE)
 else()
-    set(RYO_DEBUG OFF cACHE BOOL "" FORCE)
+    set(RYO_DEBUG OFF CACHE BOOL "" FORCE)
 endif()
 
 add_subdirectory(ryolib)
@@ -31,7 +31,18 @@ add_executable(TestApp src/main.cpp)
 
 target_link_libraries(TestApp PRIVATE ryolib)
 
-if(WIN32)
+if(IOS)
+    set_target_properties(TestApp PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.ryolib.uitest"
+        MACOSX_BUNDLE_BUNDLE_NAME "RyolibTest"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ios/Info.plist.in"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.ryolib.uitest"
+    )
+elseif(WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE FALSE)
     else()

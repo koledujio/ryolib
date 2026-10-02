@@ -58,7 +58,14 @@ namespace ryo {
 
         bool valid() const;
 
+        // resizes the main render target, width and height are in logical pixels,
+        // they're multiplied by the renderer's content scale to get the render
+        // resolution (see RendererConfig::contentScale)
         bool resize(unsigned int width, unsigned int height);
+
+        // size of the main render target (the window drawable), in pixels
+        // can differ from the window's logical size, e.g. on HiDPI displays
+        bool size_get(unsigned int& outWidth, unsigned int& outHeight) const;
 
         void frame_begin();
         bool frame_end();
@@ -162,11 +169,19 @@ namespace ryo {
     };
 
     struct RendererConfig {
-        // the native window handle is ignored on the vita
+        // Native window handle, or the platform's native render view when the
+        // platform requires one, ignored on vita.
         // the width and height on the vita are hardcoded to be 960x544
+        // on ios this requires the metal layer to be pre-created
         void* nativeWindowHandle;
         int width;
         int height;
+
+        // render pixels per logical pixel, get it from Window::hidpi_scale_get()
+        // 1.0f renders at the logical size (the default), any higher value renders
+        // at width and height multiplied by this, i.e. at the display's pixel density
+        // if this value is 0.0f or below, it's normalized to 1.0f
+        float contentScale = 1.0f;
     };
 
     struct Color {

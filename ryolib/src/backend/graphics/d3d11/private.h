@@ -18,6 +18,7 @@ namespace ryo {
 
         int width = 0;
         int height = 0;
+        float contentScale = 1.0f;
         ID3D11RenderTargetView* colorView = nullptr;
 
         ID3D11Texture2D* depthTexture = nullptr;

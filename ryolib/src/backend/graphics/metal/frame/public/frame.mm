@@ -8,6 +8,11 @@ namespace ryo {
         RYO_ENSURE_VOID(valid(), "Invalid renderer");
         RYO_ENSURE_VOID(!internal->inFrame, "Renderer already in a frame");
 
+        // the platform can resize the window at any time so a resize event may come
+        // before or after it actually laid the view out, so the drawable is synced
+        // with the view's bounds instead of relying on resize() timing
+        _renderer_sync_layer_size(*internal);
+
         if (internal->autoreleasePool) {
             [internal->autoreleasePool drain];
             internal->autoreleasePool = nil;

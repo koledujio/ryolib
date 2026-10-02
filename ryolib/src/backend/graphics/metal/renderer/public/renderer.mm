@@ -110,25 +110,26 @@ namespace ryo {
     bool Renderer::resize(unsigned int width, unsigned int height) {
         RYO_ENSURE(valid(), false, "Invalid renderer");
 
-        if (width == internal->width && height == internal->height) {
+        // width and height are logical, the framebuffer is rendered at the content scale
+        unsigned int pixelWidth = static_cast<unsigned int>(static_cast<float>(width) * internal->contentScale);
+        unsigned int pixelHeight = static_cast<unsigned int>(static_cast<float>(height) * internal->contentScale);
+
+        if (pixelWidth == static_cast<unsigned int>(internal->width) &&
+            pixelHeight == static_cast<unsigned int>(internal->height)) {
             error_set("Failed to resize renderer, new size and current size are the same");
             return false;
         }
-        
-        internal->metalLayer.drawableSize = NSMakeSize(width, height);
 
-        if (internal->mainWindowDepthTexture) {
-            [internal->mainWindowDepthTexture release];
-            internal->mainWindowDepthTexture = nil;
-        }
+        _renderer_set_layer_size(*internal, pixelWidth, pixelHeight);
 
-        MTLTextureDescriptor* depthTextureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float_Stencil8 width:width height:height mipmapped:NO];
-        depthTextureDesc.usage = MTLTextureUsageRenderTarget;
-        depthTextureDesc.storageMode = MTLStorageModePrivate;
-        internal->mainWindowDepthTexture = [internal->device newTextureWithDescriptor:depthTextureDesc];
+        return true;
+    }
 
-        internal->width = width;
-        internal->height = height;
+    bool Renderer::size_get(unsigned int& outWidth, unsigned int& outHeight) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        outWidth = static_cast<unsigned int>(internal->width);
+        outHeight = static_cast<unsigned int>(internal->height);
 
         return true;
     }

@@ -21,6 +21,10 @@ namespace ryo {
 
         uint64_t sdlFlags = 0;
 
+        if (capabilities.deviceType == DEVICE_DESKTOP ||
+            capabilities.platformType == PLATFORM_IOS)
+            sdlFlags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
         if (capabilities.deviceType == DEVICE_DESKTOP) {
             if ((flags & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE)
                 sdlFlags |= SDL_WINDOW_RESIZABLE;
@@ -30,9 +34,6 @@ namespace ryo {
 
             if ((flags & WINDOW_FLAG_BORDERLESS) == WINDOW_FLAG_BORDERLESS)
                 sdlFlags |= SDL_WINDOW_BORDERLESS;
-
-            if ((flags & WINDOW_FLAG_HIDPI) == WINDOW_FLAG_HIDPI)
-                sdlFlags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
         }
 
         unsigned int newWidth = width;
@@ -55,7 +56,10 @@ namespace ryo {
         InternalWindow* intern = new InternalWindow;
         intern->sdlWindow = window;
         intern->title = capabilities.windowTitlesSupported ? title : nullptr;
-        intern->flags = capabilities.deviceType == DEVICE_DESKTOP ? flags : WINDOW_FLAG_NONE;
+        intern->flags = (capabilities.deviceType == DEVICE_DESKTOP ||
+                         (flags & WINDOW_FLAG_STRICT_ORIENTATIONS) == WINDOW_FLAG_STRICT_ORIENTATIONS)
+                            ? flags
+                            : WINDOW_FLAG_NONE;
         intern->orientations = capabilities.fixedDefaultOrientation ? ORIENTATION_NONE : allowedOrientations;
         intern->id = static_cast<WindowID>(id);
 
@@ -68,6 +72,9 @@ namespace ryo {
     Window::~Window() {
         if (!internal)
             return;
+
+        if (internal->metalView)
+            SDL_Metal_DestroyView(internal->metalView);
 
         if (internal->sdlWindow)
             SDL_DestroyWindow(internal->sdlWindow);
@@ -85,6 +92,9 @@ namespace ryo {
             return *this;
 
         if (internal) {
+            if (internal->metalView)
+                SDL_Metal_DestroyView(internal->metalView);
+
             if (internal->sdlWindow)
                 SDL_DestroyWindow(internal->sdlWindow);
 
@@ -125,6 +135,11 @@ namespace ryo {
         return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
         #elif defined(RYO_VITA)
         return nullptr;
+        #elif defined(RYO_APPLE_IOS)
+        // required since i couldn't figure out how to create the view myself later TODO: reimplement this in my code
+        if (!internal->metalView)
+            internal->metalView = SDL_Metal_CreateView(internal->sdlWindow);
+        return internal->metalView;
         #else
         #pragma error "Native window handle sdl pointer property not specified"
         #endif
@@ -230,9 +245,7 @@ namespace ryo {
     float Window::hidpi_scale_get() const {
         RYO_ENSURE(valid(), 0.0f, "Invalid window");
 
-        float scale = SDL_GetWindowDisplayScale(internal->sdlWindow);
-
-        return scale;
+        return _platform_get_content_scale(internal->sdlWindow);
     }
 
     SafeAreaInsets Window::safe_area_insets_get() const {
@@ -269,41 +282,42 @@ namespace ryo {
 
     bool Window::flags_set(unsigned int flags) {
         RYO_ENSURE(valid(), false, "Invalid window");
-        RYO_ENSURE(_platform_get_capabilities().deviceType == DEVICE_DESKTOP, false, "Window flags aren't supported for this platform");
+
+        const PlatformCapabilities& capabilities = _platform_get_capabilities();
 
         bool fail = false;
 
         unsigned int added = flags & ~internal->flags;
         unsigned int removed = internal->flags & ~flags;
 
-        if ((added & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE) {
-            if (!SDL_SetWindowResizable(internal->sdlWindow, true))
-                fail = true;
-        } else if ((removed & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE) {
-            if (!SDL_SetWindowResizable(internal->sdlWindow, false))
-                fail = true;
+        if (capabilities.deviceType == DEVICE_DESKTOP) {
+            if ((added & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE) {
+                if (!SDL_SetWindowResizable(internal->sdlWindow, true))
+                    fail = true;
+            } else if ((removed & WINDOW_FLAG_RESIZABLE) == WINDOW_FLAG_RESIZABLE) {
+                if (!SDL_SetWindowResizable(internal->sdlWindow, false))
+                    fail = true;
+            }
+
+            if ((added & WINDOW_FLAG_FULLSCREEN) == WINDOW_FLAG_FULLSCREEN) {
+                if (!SDL_SetWindowFullscreen(internal->sdlWindow, true))
+                    fail = true;
+            } else if ((removed & WINDOW_FLAG_FULLSCREEN) == WINDOW_FLAG_FULLSCREEN) {
+                if (!SDL_SetWindowFullscreen(internal->sdlWindow, false))
+                    fail = true;
+            }
+
+            if ((added & WINDOW_FLAG_BORDERLESS) == WINDOW_FLAG_BORDERLESS) {
+                if (!SDL_SetWindowBordered(internal->sdlWindow, false))
+                    fail = true;
+            } else if ((removed & WINDOW_FLAG_BORDERLESS) == WINDOW_FLAG_BORDERLESS) {
+                if (!SDL_SetWindowBordered(internal->sdlWindow, true))
+                    fail = true;
+            }
         }
 
-        if ((added & WINDOW_FLAG_FULLSCREEN) == WINDOW_FLAG_FULLSCREEN) {
-            if (!SDL_SetWindowFullscreen(internal->sdlWindow, true))
-                fail = true;
-        } else if ((removed & WINDOW_FLAG_FULLSCREEN) == WINDOW_FLAG_FULLSCREEN) {
-            if (!SDL_SetWindowFullscreen(internal->sdlWindow, false))
-                fail = true;
-        }
+        internal->flags = flags;
 
-        if ((added & WINDOW_FLAG_BORDERLESS) == WINDOW_FLAG_BORDERLESS) {
-            if (!SDL_SetWindowBordered(internal->sdlWindow, false))
-                fail = true;
-        } else if ((removed & WINDOW_FLAG_BORDERLESS) == WINDOW_FLAG_BORDERLESS) {
-            if (!SDL_SetWindowBordered(internal->sdlWindow, true))
-                fail = true;
-        }
-
-        if ((added & WINDOW_FLAG_HIDPI) == WINDOW_FLAG_HIDPI ||
-            ((removed & WINDOW_FLAG_HIDPI) == WINDOW_FLAG_HIDPI))
-            fail = true;
-        
         return !fail;
     }
 
@@ -317,18 +331,24 @@ namespace ryo {
         RYO_ENSURE(valid(), false, "Invalid window");
         RYO_ENSURE(_platform_get_capabilities().fixedDefaultOrientation == false, false, "Platform doesn't support orientations other than default");
 
+        unsigned int effectiveOrientations = orientations;
+
+        if (_platform_is_tablet() && (internal->flags & WINDOW_FLAG_STRICT_ORIENTATIONS) != WINDOW_FLAG_STRICT_ORIENTATIONS) {
+            effectiveOrientations = ORIENTATION_ALL;
+        }
+
         char hintString[256] = "";
 
-        if ((orientations & ORIENTATION_LANDSCAPE) == ORIENTATION_LANDSCAPE)
+        if ((effectiveOrientations & ORIENTATION_LANDSCAPE) == ORIENTATION_LANDSCAPE)
             strcat(hintString, "LandscapeLeft ");
 
-        if ((orientations & ORIENTATION_LANDSCAPE_FLIPPED) == ORIENTATION_LANDSCAPE_FLIPPED)
+        if ((effectiveOrientations & ORIENTATION_LANDSCAPE_FLIPPED) == ORIENTATION_LANDSCAPE_FLIPPED)
             strcat(hintString, "LandscapeRight ");
 
-        if ((orientations & ORIENTATION_PORTRAIT) == ORIENTATION_PORTRAIT)
+        if ((effectiveOrientations & ORIENTATION_PORTRAIT) == ORIENTATION_PORTRAIT)
             strcat(hintString, "Portrait ");
 
-        if ((orientations & ORIENTATION_PORTRAIT_FLIPPED) == ORIENTATION_PORTRAIT_FLIPPED)
+        if ((effectiveOrientations & ORIENTATION_PORTRAIT_FLIPPED) == ORIENTATION_PORTRAIT_FLIPPED)
             strcat(hintString, "PortraitUpsideDown");
 
         size_t len = strlen(hintString);

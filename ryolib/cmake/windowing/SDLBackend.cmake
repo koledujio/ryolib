@@ -5,6 +5,14 @@ function(setup_sdl_backend TARGET_NAME)
 
     target_sources(${TARGET_NAME} PRIVATE ${SDL_SOURCES})
 
+    if(APPLE)
+        file(GLOB_RECURSE SDL_OBJCXX_SOURCES CONFIGURE_DEPENDS
+            "src/backend/windowing/sdl/*.mm"
+        )
+
+        target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJCXX_SOURCES})
+    endif()
+
     include(FetchContent)
 
     set(SDL_TESTS OFF CACHE BOOL "" FORCE)
@@ -28,8 +36,7 @@ function(setup_sdl_backend TARGET_NAME)
         endif()
     endforeach()
 
-    # Also add the fetched include dir to our own target
-    target_include_directories(${TARGET_NAME} BEFORE PRIVATE "${SDL3_SOURCE_DIR}/include")
+    target_include_directories(${TARGET_NAME} BEFORE PUBLIC "${SDL3_SOURCE_DIR}/include")
 
     target_link_libraries(${TARGET_NAME} PUBLIC SDL3::SDL3-static)
 endfunction()

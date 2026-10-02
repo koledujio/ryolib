@@ -33,7 +33,8 @@ namespace ryo {
 
         PLATFORM_MACOS,   ///< macOS.
         PLATFORM_WINDOWS, ///< Windows.
-        PLATFORM_VITA     ///< Playstation Vita.
+        PLATFORM_VITA,    ///< Playstation Vita.
+        PLATFORM_IOS      ///< iOS/iPadOS.
     };
 
     /**
@@ -50,7 +51,7 @@ namespace ryo {
                         ///< Currently includes: macOS, Windows.
 
         DEVICE_MOBILE,  ///< Mobile phone/tablet.
-                        ///< Currently includes: none.
+                        ///< Currently includes: iOS/iPadOS.
 
         DEVICE_CONSOLE  ///< Console.
                         ///< Currently includes: Playstation Vita.
@@ -74,7 +75,7 @@ namespace ryo {
                                ///< Includes: Playstation Vita.
 
         SIZE_MANAGED_RESIZABLE ///< Size dictated by OS, resizable.
-                               ///< Includes: none.
+                               ///< Includes: iOS/iPadOS.
     };
 
     /**
@@ -90,13 +91,26 @@ namespace ryo {
         SizeManagementType sizeManagementType; ///< Sizing and resizing behavior.
 
         /**
+         * @brief Tablet form factor.
+         *
+         * True for tablet devices, False for everything else.
+         * Currently True for: iPadOS.
+         * False for: macOS, Windows, Playstation Vita, iOS/iPhone.
+         *
+         * @note Tablets support multitasking (Split View, Slide Over, Stage Manager),
+         * which is why they are allowed to support every display orientation, refer to
+         * @ref DisplayOrientations.
+         */
+        bool isTablet;
+
+        /**
          * @brief Fixed default orientation.
          *
          * True, if the platform supports only one default orientation.
          * False, if the platform supports more than one default orientation.
          *
-         * True for: macOS, Windows.
-         * False for: Playstation Vita.
+         * True for: macOS, Windows, Playstation Vita.
+         * False for: iOS/iPadOS.
          */
         bool fixedDefaultOrientation;
 
@@ -106,14 +120,14 @@ namespace ryo {
          * Specifies weather the platform supports multiple windows.
          * 
          * True for: macOS, Windows.
-         * False for: Playstation Vita.
+         * False for: Playstation Vita, iOS/iPadOS.
          */
         bool supportsMultipleWindows;
 
         /**
          * @brief Specifies if the platform supports gamepad controllers.
          *
-         * True for: macOS, Windows, Playstation Vita.
+         * True for: macOS, Windows, Playstation Vita, iOS/iPadOS.
          * False for: none.
          */
         bool controllerSupport;
@@ -121,7 +135,7 @@ namespace ryo {
         /**
          * @brief Specifies if the platform supports keyboards.
          *
-         * True for: macOS, Windows, Playstation Vita.
+         * True for: macOS, Windows, Playstation Vita, iOS/iPadOS.
          * False for: none.
          */
         bool keyboardSupport;
@@ -129,7 +143,7 @@ namespace ryo {
         /**
          * @brief Specifies if the platform supports mouse input.
          *
-         * True for: macOS, Windows, Playstation Vita.
+         * True for: macOS, Windows, Playstation Vita, iOS/iPadOS.
          * False for: none.
          */
         bool mouseSupport;
@@ -137,7 +151,7 @@ namespace ryo {
         /**
          * @brief Specifies if the platform supports touch input.
          *
-         * True for: Windows, Playstation Vita.
+         * True for: Windows, Playstation Vita, iOS/iPadOS.
          * False for: macOS.
          */
         bool touchSupport;
@@ -146,17 +160,25 @@ namespace ryo {
          * @brief Specifies if the platform supports custom window titles.
          *
          * True for: macOS, Windows.
-         * False for: Playstation Vita.
+         * False for: Playstation Vita, iOS/iPadOS.
          */
         bool windowTitlesSupported;
 
         /**
          * @brief Specifies if the platform supports native window handles.
          *
-         * True for macOS, Windows.
+         * True for macOS, Windows, iOS/iPadOS.
          * False for: Playstation Vita.
          */
         bool nativeWindowHandleSupported;
+
+        /**
+         * @brief Specifies if the platform supports application invoked application quitting.
+         *
+         * True for: macOS, Windows, Playstation Vita.
+         * False for: iOS/iPadOS
+         */
+        bool quitSupported;
     };
 
     /**
@@ -166,7 +188,9 @@ namespace ryo {
     /**
      * @brief Window behavior flags bitmask.
      *
-     * @note None of these apply for console and mobile, the flags are safely ignored.
+     * @note None of these apply for console and mobile, the flags are safely ignored,
+     * with the exception of @ref WindowFlags::WINDOW_FLAG_STRICT_ORIENTATIONS, which
+     * applies to iPadOS.
      *
      * @see Window()
      * @see Window::flags_get()
@@ -177,11 +201,25 @@ namespace ryo {
         WINDOW_FLAG_RESIZABLE  = 1 << 0, ///< Allows user resizing and using minimum/maximum window dimensions.
         WINDOW_FLAG_FULLSCREEN = 1 << 1, ///< Spans the entire screen or native display.
         WINDOW_FLAG_BORDERLESS = 1 << 2, ///< Removes window borders and decorations.
-        WINDOW_FLAG_HIDPI      = 1 << 3  ///< Enables HiDPI / Retina framebuffer scaling.
+
+        /**
+         * @brief Honors the requested display orientations on iPadOS.
+         *
+         * Applications are required to support every display orientation, so that
+         * they can participate in multitasking, which is the default. This flag
+         * disables that and honors the requested @ref DisplayOrientations on iPadOS,
+         * at the cost of disabling multitasking.
+         */
+        WINDOW_FLAG_STRICT_ORIENTATIONS = 1 << 3
     };
 
     /**
      * @brief Display orientations bitmask.
+     *
+     * @note In order to support multitasking (Split View, Slide Over, Stage Manager) on iPadOS,
+     * the application needs to support every orientation. By default for iPadOS, the allowed orientations
+     * are ignored and are automatically set to @ref DisplayOrientations::ORIENTATION_ALL unless the
+     * @ref WindowFlags::WINDOW_FLAG_STRICT_ORIENTATIONS flag is set.
      *
      * @see Window()
      * @see Window::orientations_get()
@@ -193,7 +231,8 @@ namespace ryo {
         ORIENTATION_LANDSCAPE         = 1 << 0, ///< Landscape display orientation
         ORIENTATION_PORTRAIT          = 1 << 1, ///< Portrait display orientation
         ORIENTATION_LANDSCAPE_FLIPPED = 1 << 2, ///< Flipped landscape display orientation
-        ORIENTATION_PORTRAIT_FLIPPED  = 1 << 3  ///< Flipped portrait display orientation
+        ORIENTATION_PORTRAIT_FLIPPED  = 1 << 3, ///< Flipped portrait display orientation
+        ORIENTATION_ALL               = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) ///< Every display orientation.
     };
 
     /**
@@ -360,8 +399,8 @@ namespace ryo {
          * @brief Window resized.
          *
          * Triggered when the OS or user requests the window to be resized.
-         * Populates the width and height in logical pixels in @ref Event::data::window::width and
-         * @ref Event::data::window::height;
+         * Populates the window id in @ref Event::windowId and width and height in logical
+         * pixels in @ref Event::data::window::width and @ref Event::data::window::height;
          *
          * @note This can only be triggered if the window has the @ref WindowFlags::WINDOW_FLAG_RESIZEABLE
          * flag enabled and the @ref PlatformCapapabilities::sizeManagmentType is either
@@ -373,6 +412,30 @@ namespace ryo {
          * @see SizeManagmentType
          */
         EVENT_WINDOW_RESIZED,
+
+        /**
+         * @brief Window content (HiDPI) scale changed.
+         *
+         * Triggered when the window's content scale has changed, which is the number of
+         * physical pixels the window covers per logical pixel. Refer to
+         * @ref Window::hidpi_scale_get() to retrieve the new value.
+         * Populates the window id in @ref Event::windowId.
+         *
+         * @note The content scale depends on the display the window is on, so this can be
+         * triggered by moving the window between displays with different pixel densities or
+         * by the display's scaling changing.
+         * @note Platforms with a fixed display density (mobile and console) don't change
+         * their content scale, so this event type isn't triggered there. Their render
+         * resolution follows the window size instead, refer to
+         * @ref EventType::EVENT_WINDOW_RESIZED.
+         * @note Content rasterized at a logical size (text, for example) has to be
+         * regenerated after this event to stay at the new density.
+         *
+         * @see Window
+         * @see Window::hidpi_scale_get()
+         * @see EventType::EVENT_WINDOW_RESIZED
+         */
+        EVENT_WINDOW_HIDPI_SCALE_CHANGED,
 
         /**
          * @brief New gamepad controller available.
@@ -461,7 +524,8 @@ namespace ryo {
          * Triggered when a keyboard key has been pressed.
          * If the key wasn't physically just pressed and instead the OS repeats the input, the repeat flag is
          * set to true.
-         * Populates the key code in @ref Event::data::key::code and repeat flag @ref Event::data::key::isRepeat.
+         * Populates the window id in @ref Event::windowId, key code in @ref Event::data::key::code
+         * and the repeat flag in @ref Event::data::key::isRepeat.
          *
          * @see KeyCode.
          */
@@ -471,7 +535,7 @@ namespace ryo {
          * @brief Keyboard key released.
          *
          * Triggered when a keyboard key has been released.
-         * Populates the key code in @ref Event::data::key::code.
+         * Populates the window id in @ref Event::windowId and the key code in @ref Event::data::key::code.
          *
          * @see KeyCode.
          */
@@ -484,8 +548,8 @@ namespace ryo {
          * This event type uses normalized coordinates from -1.0f to 1.0f.
          * If the normalized coordinate represents the x value, -1.0f is the left edge of the screen, and 1.0f is the
          * right edge, else if the normalized coordinate represents the y value, -1.0f is the top edge, and 1.0f is the bottom edge.
-         * Populates finger id in @ref Event::data::touch::fingerId and normalized coordinates in @ref Event::data::touch::x
-         * and @ref Event::data::touch::y.
+         * Populates the window id in @ref Event::windowId, finger id in @ref Event::data::touch::fingerId and normalized coordinates
+         * in @ref Event::data::touch::x and @ref Event::data::touch::y.
          */
         EVENT_TOUCH_BEGIN,
 
@@ -499,8 +563,8 @@ namespace ryo {
          * The @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY values represent the amount of how much the normalized
          * position of the touch finger has changed since the last @ref EVENT_TOUCH_BEGIN or @ref EVENT_TOUCH_MOVE event type for this
          * finger id.
-         * Populates finger id in @ref Event::data::touch::fingerId, normalized coordinates in @ref Event::data::touch::x
-         * and @ref Event::data::touch::y and the delta values in @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY. 
+         * Populates the window id in @ref Event::windowId, finger id in @ref Event::data::touch::fingerId, normalized coordinates in
+         * @ref Event::data::touch::x and @ref Event::data::touch::y and the delta values in @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY. 
          */
         EVENT_TOUCH_MOVE,
 
@@ -514,8 +578,8 @@ namespace ryo {
          * The @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY values represent the amount of how much the normalized
          * position of the touch finger has changed since the last @ref EVENT_TOUCH_BEGIN or @ref EVENT_TOUCH_MOVE event type for this
          * finger id.
-         * Populates finger id in @ref Event::data::touch::fingerId, normalized coordinates in @ref Event::data::touch::x
-         * and @ref Event::data::touch::y and the delta values in @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY. 
+         * Populates the window id in @ref Event::windowId, finger id in @ref Event::data::touch::fingerId, normalized coordinates in
+         * @ref Event::data::touch::x and @ref Event::data::touch::y and the delta values in @ref Event::data::touch::deltaX and @ref Event::data::touch::deltaY. 
          */
         EVENT_TOUCH_END,
 
@@ -541,6 +605,7 @@ namespace ryo {
          * Triggered when the window becomes unfocused.
          * This event can only be triggered on desktop devices @ref DeviceType::DEVICE_DESKTOP.
          * To check the current device type, look at @ref PlatformCapability::deviceType.
+         * Populates the window id in @ref Event::windowId.
          *
          * @see PlatformCapability
          * @see DeviceType
@@ -553,6 +618,7 @@ namespace ryo {
          * Triggered when the window becomes focused.
          * This event can only be triggered on desktop devices @ref DeviceType::DEVICE_DESKTOP.
          * To check the current device type, look at @ref PlatformCapability::deviceType.
+         * Populates the window id in @ref Event::windowId.
          *
          * @see PlatformCapability
          * @see DeviceType
@@ -1234,21 +1300,28 @@ namespace ryo {
         float aspect_ratio_get() const;
 
         /**
-         * @brief Gets the window's HiDPI scale.
+         * @brief Gets the window's content scale.
          *
-         * Gets the scale of how much things in the window should be to match the non-HiDPI resolution.
+         * Gets how many physical pixels the window covers per logical pixel, which is the scale
+         * content that isn't resolution-independent (text and UI bitmaps, for example) should
+         * be scaled by in order to match the display's pixel density.
          * For example on an Apple display this works as follows:
          * - 1.0f - Standard resolution,
          * - 2.0f - "Retina" resolution(HiDPI, 2x as much resolution as standard).
          *
          * @pre The window must be valid (@ref valid() == true).
          *
-         * @return The window's HiDPI scale, 0.0f indicates failure.
+         * @return The window's content scale, 0.0f indicates failure.
          *
-         * @note If the @ref WindowFlags::WINDOW_FLAG_HIDPI flag is not used, this function always returns 1.0f.
+         * @note This reflects the display's pixel density on every platform and device type.
+         * @note The value changes over time, @ref EventType::EVENT_WINDOW_HIDPI_SCALE_CHANGED
+         * is triggered whenever it does.
+         * @note The renderer doesn't automatically render at this density, it has to be passed
+         * to the renderer in order to render at the window's physical resolution, refer to
+         * `RendererConfig::contentScale` and `Renderer::size_get()`.
          * @note On failure, an error message is set and can be retrieved via @ref error_get().
          *
-         * @see WindowFlags
+         * @see EventType::EVENT_WINDOW_HIDPI_SCALE_CHANGED
          * @see valid()
          * @see error_get()
          * @see size_get()
@@ -1315,7 +1388,6 @@ namespace ryo {
          *
          * @return True if the flags were updated successfully, false if at least one of the operations failed, unsupported or invalid window.
          *
-         * @note Removing or adding the @ref WindowFlags::WINDOW_FLAG_HIDPI flag is not supported, doing this will result in a false return value.
          * @note This function is only supported for @ref DeviceType::DEVICE_DESKTOP, this can be checked in @ref PlatformCapabilities.
          * On non-desktop device types, this always results in a false return value.
          * @note On failure, an error message is set and can be retrieved via @ref error_get().
@@ -1363,6 +1435,9 @@ namespace ryo {
          *
          * @note Check (@ref PlatformCapabilities::fixedDefaultOrientation == false), to
          * verify if display orientations are supported, if they're not, false will be returned.
+         * @note iPadOS devices always have the allowed orientations as @ref DisplayOrientations::ORIENTATION_ALL
+         * regardless of @p orientations and calls to this function are ignored, unless
+         * the @ref WindowFlags::WINDOW_FLAG_STRICT_ORIENTATIONS flags was set during window creation.
          * @note On failure, an error message is set and can be retrieved via @ref error_get().
          *
          * @see DisplayOrientations

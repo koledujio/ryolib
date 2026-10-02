@@ -32,6 +32,11 @@ namespace ryo {
         colorDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
         colorDesc.blendMode = BLEND_MODE_OPAQUE;
         internalRenderer.defaultColorPipeline = new Pipeline(renderer, colorDesc);
+#if defined(RYO_DEBUG)
+        if (!internalRenderer.defaultColorPipeline->valid()) {
+            fprintf(stderr, "Failed to create default color pipeline: %s\n", error_get());
+        }
+#endif
         RYO_ASSERT_NORETURN(internalRenderer.defaultColorPipeline->valid(), "Failed to create default color pipeline");
 
         PipelineDesc textureDesc = {};
@@ -39,6 +44,11 @@ namespace ryo {
         textureDesc.vertexLayout = VERTEX_LAYOUT_POSITION_UV;
         textureDesc.blendMode = BLEND_MODE_OPAQUE;
         internalRenderer.defaultTexturePipeline = new Pipeline(renderer, textureDesc);
+#if defined(RYO_DEBUG)
+        if (!internalRenderer.defaultTexturePipeline->valid()) {
+            fprintf(stderr, "Failed to create default texture pipeline: %s\n", error_get());
+        }
+#endif
         RYO_ASSERT_NORETURN(internalRenderer.defaultTexturePipeline->valid(), "Failed to create default texture pipeline");
 
         PipelineDesc stencilDesc = {};
@@ -46,6 +56,11 @@ namespace ryo {
         stencilDesc.vertexLayout = VERTEX_LAYOUT_POSITION;
         stencilDesc.blendMode = BLEND_MODE_OPAQUE;
         internalRenderer.stencilPipeline = new Pipeline(renderer, stencilDesc);
+#if defined(RYO_DEBUG)
+        if (!internalRenderer.stencilPipeline->valid()) {
+            fprintf(stderr, "Failed to create stencil pipeline: %s\n", error_get());
+        }
+#endif
         RYO_ASSERT_NORETURN(internalRenderer.stencilPipeline->valid(), "Failed to create stencil pipeline");
 
         return true;

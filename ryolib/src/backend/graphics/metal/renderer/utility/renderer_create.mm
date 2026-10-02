@@ -4,30 +4,61 @@ namespace ryo {
     bool _renderer_create(Renderer& renderer, const RendererConfig& config, id<MTLDevice> device) {
         id<MTLCommandQueue> queue = [device newCommandQueue];
 
-        CAMetalLayer* layer = [CAMetalLayer layer];
-        layer.device = device;
-        layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-        layer.framebufferOnly = YES;
-        layer.drawableSize = CGSizeMake(config.width, config.height);
+        float contentScale = config.contentScale;
+        if (contentScale <= 0.0f)
+            contentScale = 1.0f;
 
+        // render resolution = logical size * content scale
+        int width = static_cast<int>(static_cast<float>(config.width) * contentScale);
+        int height = static_cast<int>(static_cast<float>(config.height) * contentScale);
+
+        CAMetalLayer* layer = [CAMetalLayer layer];
+#if defined(RYO_APPLE_IOS) || TARGET_OS_IPHONE
+        if (config.nativeWindowHandle) {
+            UIView* view = (__bridge UIView*)config.nativeWindowHandle;
+            CAMetalLayer* sdlLayer = (CAMetalLayer*)view.layer;
+            if (view && sdlLayer) {
+                CGFloat scale = sdlLayer.contentsScale;
+                if (scale <= 0.0)
+                    scale = 1.0;
+
+                CGRect viewBounds = view.bounds;
+                width = static_cast<int>(viewBounds.size.width * scale);
+                height = static_cast<int>(viewBounds.size.height * scale);
+                contentScale = static_cast<float>(scale);
+                layer = sdlLayer;
+            }
+        }
+#else
         if (config.nativeWindowHandle) {
             NSWindow* window = (__bridge NSWindow*)config.nativeWindowHandle;
             if (window && window.contentView) {
-                window.contentView.layer = layer;
                 window.contentView.wantsLayer = YES;
+                window.contentView.layer = layer;
+                layer.frame = window.contentView.bounds;
+                layer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
             }
         }
+#endif
+
+        layer.device = device;
+        layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        layer.framebufferOnly = YES;
+        layer.contentsScale = contentScale;
+        layer.drawableSize = CGSizeMake(width, height);
 
         InternalRenderer* intern = new InternalRenderer;
         intern->device = [device retain];
         intern->queue = queue;
         intern->metalLayer = layer;
-        intern->width = config.width;
-        intern->height = config.height;
+        intern->contentScale = contentScale;
 
         renderer.internal = intern;
 
         _renderer_sampler_init(*intern);
+
+        // drawable and depth texture at the render resolution
+        _renderer_set_layer_size(*intern, width, height);
 
         // DISABLED, READ, READ_WRITE
         MTLCompareFunction depthFuncs[3] = { MTLCompareFunctionAlways, MTLCompareFunctionLessEqual, MTLCompareFunctionLessEqual };
@@ -40,16 +71,6 @@ namespace ryo {
             intern->depthStates[i] = [device newDepthStencilStateWithDescriptor:desc];
             [desc release];
         }
-
-        MTLTextureDescriptor* depthTextureDesc =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float_Stencil8
-                                  width:config.width
-                                  height:config.height
-                                  mipmapped:NO];
-        
-        depthTextureDesc.usage = MTLTextureUsageRenderTarget;
-        depthTextureDesc.storageMode = MTLStorageModePrivate;
-        intern->mainWindowDepthTexture = [device newTextureWithDescriptor:depthTextureDesc];
 
         MTLDepthStencilDescriptor* stencilWriteDesc = [[MTLDepthStencilDescriptor alloc] init];
         stencilWriteDesc.depthCompareFunction = MTLCompareFunctionAlways;

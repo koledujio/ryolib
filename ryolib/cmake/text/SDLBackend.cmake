@@ -35,6 +35,7 @@ function(setup_sdl_ttf_backend TARGET_NAME)
     endif()
 
     # Fetch SDL_ttf (SDL3_ttf)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(SDLTTF_SAMPLES OFF CACHE BOOL "" FORCE)
     set(SDLTTF_INSTALL OFF CACHE BOOL "" FORCE)
     set(SDLTTF_VENDORED ON CACHE BOOL "" FORCE) # Ensures it builds bundled FreeType/HarfBuzz if not found on system
@@ -71,4 +72,9 @@ function(setup_sdl_ttf_backend TARGET_NAME)
     FetchContent_MakeAvailable(SDL3_ttf)
 
     target_link_libraries(${TARGET_NAME} PUBLIC SDL3_ttf::SDL3_ttf)
+
+    if(APPLE)
+        find_library(CORETEXT_FRAMEWORK CoreText REQUIRED)
+        target_link_libraries(${TARGET_NAME} PUBLIC ${CORETEXT_FRAMEWORK})
+    endif()
 endfunction()

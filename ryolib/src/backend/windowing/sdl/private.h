@@ -5,6 +5,7 @@
 #include "ryolib/windowing.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_metal.h>
 
 namespace ryo {
     struct InternalApplication {
@@ -16,6 +17,7 @@ namespace ryo {
         unsigned int flags = 0;
         unsigned int orientations = ORIENTATION_NONE;
         WindowID id = 0;
+        SDL_MetalView metalView = nullptr;
     };
 
     struct InternalGamepad {
@@ -33,6 +35,8 @@ namespace ryo {
     KeyCode _keyboard_get_ryo_key(SDL_Scancode scancode);
     const PlatformCapabilities& _platform_get_capabilities();
     bool _platform_get_forced_resolution(unsigned int& outWidth, unsigned int& outHeight);
+    float _platform_get_content_scale(SDL_Window* sdlWindow);
+    bool _platform_is_tablet();
 
     bool _sdl_initialize();
     void _sdl_quit();
