@@ -239,9 +239,8 @@ namespace ryo {
      * @brief Safe area insets.
      *
      * The window's safe area insets in logical pixels.
-     * Changes based on window dimensions, display orientation and folding state.
-     *
-     * TODO: add safe area insets changed event
+     * Changes based on window dimensions, display orientation and folding state, refer to
+     * @ref EventType::EVENT_WINDOW_SAFE_AREA_CHANGED for when they change.
      *
      * @see Window
      * @see Window::safe_area_insets_get()
@@ -371,8 +370,6 @@ namespace ryo {
     /**
      * @brief Type of @ref Event
      *
-     * TODO: add safe area insets changed event
-     *
      * @see Event
      * @see Window
      * @see Window::event_poll()
@@ -436,6 +433,32 @@ namespace ryo {
          * @see EventType::EVENT_WINDOW_RESIZED
          */
         EVENT_WINDOW_HIDPI_SCALE_CHANGED,
+
+        /**
+         * @brief Window safe area changed.
+         *
+         * Triggered when the window's safe area insets have changed, which is the area of
+         * the window that isn't covered by the display's cutouts and system UI (a notch,
+         * rounded corners, a home indicator, ...). Refer to
+         * @ref Window::safe_area_insets_get() to retrieve the new insets.
+         * Populates the window id in @ref Event::windowId.
+         *
+         * @note The insets are in logical pixels and rotated to match the current display
+         * orientation, so rotating the device moves them to another side of the screen
+         * without the window's size changing. Content that has to stay visible and
+         * reachable has to be laid out inside them.
+         * @note This isn't triggered together with @ref EventType::EVENT_WINDOW_RESIZED
+         * necessarily, even though the window dimensions, the display orientation and the
+         * device's folding state are among the things the insets are based on.
+         * @note Platforms without cutouts or system UI inside the window don't have safe
+         * area insets, every field is 0.0f there.
+         *
+         * @see Window
+         * @see Window::safe_area_insets_get()
+         * @see SafeAreaInsets
+         * @see EventType::EVENT_WINDOW_RESIZED
+         */
+        EVENT_WINDOW_SAFE_AREA_CHANGED,
 
         /**
          * @brief New gamepad controller available.
@@ -1339,8 +1362,6 @@ namespace ryo {
          * @brief Gets the current safe area insets.
          *
          * Gets the safe area insets for the current window dimensions and orientation.
-         * This is dependent on the window dimensions and display orientation, so it
-         * should be called when any one of these change.
          * The insets are in logical pixels, rotated to match the current display
          * orientation.
          *
@@ -1348,8 +1369,13 @@ namespace ryo {
          *
          * @return The window's current safe area insets, or 0.0f in every field if invalid.
          *
+         * @note The insets change over time and not only with the window's size, rotating a
+         * device moves them to another side of the screen.
+         * @ref EventType::EVENT_WINDOW_SAFE_AREA_CHANGED is triggered whenever they do.
+         *
          * @see SafeAreaInsets
          * @see DisplayOrientations
+         * @see EventType::EVENT_WINDOW_SAFE_AREA_CHANGED
          * @see valid()
          * @see size_get()
          * @see size_set()

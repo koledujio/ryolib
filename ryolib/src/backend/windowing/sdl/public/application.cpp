@@ -80,6 +80,11 @@ namespace ryo {
                 event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
                 break;
             
+            case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
+                event.type = EVENT_WINDOW_SAFE_AREA_CHANGED;
+                event.windowId = static_cast<WindowID>(sdlEvent.window.windowID);
+                break;
+            
             case SDL_EVENT_GAMEPAD_ADDED:
                 event.type = EVENT_PAD_ADDED;
                 event.data.pad.id = sdlEvent.gdevice.which;
