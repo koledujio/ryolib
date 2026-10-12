@@ -203,15 +203,6 @@ namespace ryo {
                 );
     }
 
-    bool Renderer::size_get(unsigned int& outWidth, unsigned int& outHeight) const {
-        RYO_ENSURE(valid(), false, "Invalid renderer");
-
-        outWidth = static_cast<unsigned int>(internal->width);
-        outHeight = static_cast<unsigned int>(internal->height);
-
-        return true;
-    }
-
     bool Renderer::resize(unsigned int width, unsigned int height) {
         RYO_ENSURE(valid(), false, "Invalid renderer");
 
@@ -251,5 +242,60 @@ namespace ryo {
         internal->height = pixelHeight;
 
         return true;
+    }
+
+    bool Renderer::size_get(unsigned int& outWidth, unsigned int& outHeight) const {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        outWidth = static_cast<unsigned int>(internal->width);
+        outHeight = static_cast<unsigned int>(internal->height);
+
+        return true;
+    }
+
+    bool Renderer::content_scale_get(float& outScale) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        outScale = internal->contentScale;
+
+        return true;
+    }
+
+    bool Renderer::content_scale_set(float scale) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        if (scale == internal->contentScale)
+            return true;
+
+        float old = internal->contentScale;
+        internal->contentScale = scale < 1.0f ? 1.0f : scale;
+        if (!resize(static_cast<unsigned int>(internal->width), static_cast<unsigned int>(internal->height))) {
+            internal->contentScale = old;
+            return false;
+        }
+
+        return true;
+    }
+
+    const Pipeline& Renderer::pipeline_builtin_get(BuiltinPipeline builtinPipeline) const {
+        static const Pipeline invalidPipeline;
+
+        RYO_ENSURE(valid(), invalidPipeline, "Invalid renderer");
+
+        switch (builtinPipeline) {
+            case BUILTIN_PIPELINE_COLOR:
+                return *internal->defaultColorPipeline;
+
+            case BUILTIN_PIPELINE_TEXTURE:
+                return *internal->defaultTexturePipeline;
+
+            case BUILTIN_PIPELINE_STENCIL:
+                return *internal->stencilPipeline;
+        }
+
+        error_set("Invalid built-in pipeline type: %u", static_cast<unsigned int>(builtinPipeline));
+        RYO_ASSERT_NORETURN(false, "Invalid built-in pipeline type");
+
+        return invalidPipeline;
     }
 }

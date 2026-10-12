@@ -110,8 +110,47 @@ namespace ryo {
         return true;
     }
 
+    const Pipeline& Renderer::pipeline_builtin_get(BuiltinPipeline builtinPipeline) const {
+        static const Pipeline invalidPipeline;
+
+        RYO_ENSURE(valid(), invalidPipeline, "Invalid renderer");
+
+        switch (builtinPipeline) {
+            case BUILTIN_PIPELINE_COLOR:
+                return *internal->defaultColorPipeline;
+
+            case BUILTIN_PIPELINE_TEXTURE:
+                return *internal->defaultTexturePipeline;
+
+            case BUILTIN_PIPELINE_STENCIL:
+                return *internal->stencilPipeline;
+        }
+
+        error_set("Invalid built-in pipeline type: %u", static_cast<unsigned int>(builtinPipeline));
+        RYO_ASSERT_NORETURN(false, "Invalid built-in pipeline type");
+
+        return invalidPipeline;
+    }
+
     bool Renderer::resize(unsigned int width, unsigned int height) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
         // TODO: figure out what to do with this function, for now nothing
+        
+        return true;
+    }
+
+    bool Renderer::content_scale_get(float& outScale) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
+        outScale = 1.0f;
+
+        return true;
+    }
+
+    bool Renderer::content_scale_set(float scale) {
+        RYO_ENSURE(valid(), false, "Invalid renderer");
+
         return true;
     }
 }

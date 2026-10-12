@@ -41,7 +41,10 @@ namespace ryo {
             
             // case SDL_GAMEPAD_TYPE_STEAM:
             //     return PAD_TYPE_STEAM;
-            // to be added once sdl actually adds support
+            // to be added once sdl actually adds support it
+
+            default:
+                return PAD_TYPE_UNKNOWN;
         }
     }
 }

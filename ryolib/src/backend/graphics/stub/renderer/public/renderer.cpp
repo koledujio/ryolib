@@ -12,4 +12,10 @@ namespace ryo {
 
     bool Renderer::resize(unsigned int width, unsigned int height) {return true;}
     bool Renderer::size_get(unsigned int& outWidth, unsigned int& outHeight) const {outWidth = 0; outHeight = 0; return false;}
+
+    const Pipeline& Renderer::pipeline_builtin_get(BuiltinPipeline builtinPipeline) const {
+        static const Pipeline invalidPipeline;
+
+        return invalidPipeline;
+    }
 }
