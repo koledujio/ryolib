@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GfxLibraryTest C CXX)
-
-if(APPLE)
-    enable_language(OBJC OBJCXX)
-endif()
+project(GfxLibraryTest C CXX OBJC OBJCXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,7 +23,12 @@ endif()
 
 add_subdirectory(ryolib)
 
-add_executable(TestApp src/main.cpp)
+add_executable(TestApp
+    src/main.cpp
+
+    src/demos/objcpp_RYViewRoot/implementation.mm
+    src/demos/objcpp_RYView/implementation.mm
+)
 
 target_link_libraries(TestApp PRIVATE ryolib)
 
@@ -49,7 +50,27 @@ elseif(WIN32)
         set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE TRUE)
     endif()
 
-    target_link_options(TestApp PRIVATE -static -static-libgcc -static-libstdc++)
+    # MinGW's Objective-C runtime is distributed as a DLL import library. Keep
+    # the C/C++ runtimes static, but do not use -static or ld will select the
+    # incompatible libobjc.a archive instead of libobjc.dll.a.
+    target_link_options(TestApp PRIVATE -static-libgcc -static-libstdc++)
+
+    # The Objective-C runtime is a DLL when using MinGW. Copy the exact runtime
+    # selected by the cross compiler next to the demo executable for local runs
+    # and packaged builds.
+    execute_process(
+        COMMAND ${CMAKE_OBJC_COMPILER} -print-file-name=libobjc-4.dll
+        OUTPUT_VARIABLE RYO_OBJC_RUNTIME_DLL
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(EXISTS "${RYO_OBJC_RUNTIME_DLL}")
+        add_custom_command(TARGET TestApp POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${RYO_OBJC_RUNTIME_DLL}"
+                "$<TARGET_FILE_DIR:TestApp>/libobjc-4.dll"
+            COMMENT "Copying the MinGW Objective-C runtime next to TestApp..."
+        )
+    endif()
 elseif(VITA)
     include("${VITASDK}/share/vita.cmake")
 

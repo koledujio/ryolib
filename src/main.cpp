@@ -22,6 +22,8 @@
 #include "demos/stencil_oval/stencil_oval.h"
 #include "demos/stencil_render_target/stencil_render_target.h"
 #include "demos/stencil_streched_rounded_rectangle/stencil_streched_rounded_rectangle.h"
+#include "demos/objcpp_RYViewRoot/objcpp_RYViewRoot.h"
+#include "demos/objcpp_RYView/objcpp_RYView.h"
 
 #include <vector>
 #include <string>
@@ -377,6 +379,8 @@ int main(int argc, char* argv[]) {
     demos.push_back(std::make_unique<StencilOvalDemo>());
     demos.push_back(std::make_unique<StencilRenderTargetDemo>());
     demos.push_back(std::make_unique<StencilStrechedRoundedRectangleDemo>());
+    demos.push_back(std::make_unique<ObjcppRYViewRootDemo>());
+    demos.push_back(std::make_unique<ObjcppRYViewDemo>());
 
     MenuState menuState;
     menuState.contentScale = contentScale;

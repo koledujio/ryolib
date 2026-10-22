@@ -5,13 +5,11 @@ function(setup_sdl_backend TARGET_NAME)
 
     target_sources(${TARGET_NAME} PRIVATE ${SDL_SOURCES})
 
-    if(APPLE)
-        file(GLOB_RECURSE SDL_OBJCXX_SOURCES CONFIGURE_DEPENDS
-            "src/backend/windowing/sdl/*.mm"
-        )
+    file(GLOB_RECURSE SDL_OBJCXX_SOURCES CONFIGURE_DEPENDS
+        "src/backend/windowing/sdl/*.mm"
+    )
 
-        target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJCXX_SOURCES})
-    endif()
+    target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJCXX_SOURCES})
 
     include(FetchContent)
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ryolib C CXX)
+project(ryolib C CXX OBJC OBJCXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -9,9 +9,18 @@ set(RYOLIB_CORE_SOURCES
     src/math/vector2.cpp
 
     src/debug/error/error.cpp
+
+    src/objcpp/RYObject.mm
+    src/objcpp/RYArray.mm
+    src/ui/RYView.mm
+    src/ui/RYViewRoot.mm
 )
 
 add_library(ryolib STATIC ${RYOLIB_CORE_SOURCES})
+
+if(NOT APPLE)
+    target_link_libraries(ryolib PRIVATE objc)
+endif()
 
 target_include_directories(ryolib PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -28,7 +37,7 @@ if (RYO_SAFETY)
     target_compile_definitions(ryolib PRIVATE RYO_SAFETY)
 endif()
 
-if(APPLE)
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if(IOS)
         target_compile_definitions(ryolib PUBLIC RYO_APPLE_IOS=1)
     else()

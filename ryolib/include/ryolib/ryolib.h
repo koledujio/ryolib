@@ -8,3 +8,5 @@
 #include "text.h"
 #include "windowing.h"
 #include "audio.h"
+#include "objcpp.h"
+#include "ui.h"
