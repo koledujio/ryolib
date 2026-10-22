@@ -14,10 +14,16 @@ struct RYDrawContext {
 };
 
 @interface RYView : RYObject {
-@private
-    RYViewRoot *_viewRoot;
-
+@protected
     ryo::Matrix4 _matrix;
+
+    RYView *_superview;
+    RYViewRoot *_viewRoot;
+    RYArray *_subviews;
+    
+    ryo::Vector2 _position;
+    ryo::Vector2 _size;
+    ryo::Color _backgroundColor;
 }
 
 @property (nonatomic, readonly) RYView *superview;

@@ -6,6 +6,10 @@ using namespace ryo;
 
 @implementation RYViewRoot
 
+@synthesize contentView = _contentView;
+@synthesize logicalSize = _logicalSize;
+@synthesize backgroundColor = _backgroundColor;
+
 - (instancetype)initWithRenderer:(Renderer *)renderer
               physicalResolution:(Vector2)resolution
                     contentScale:(float)contentScale
@@ -35,7 +39,7 @@ using namespace ryo;
         resolution.y / contentScale
     };
 
-    self.backgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    _backgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
     RenderTarget* renderTarget = new RenderTarget(*renderer, resolution.x, resolution.y);
 

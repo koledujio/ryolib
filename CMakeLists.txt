@@ -50,25 +50,46 @@ elseif(WIN32)
         set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE TRUE)
     endif()
 
-    # MinGW's Objective-C runtime is distributed as a DLL import library. Keep
-    # the C/C++ runtimes static, but do not use -static or ld will select the
-    # incompatible libobjc.a archive instead of libobjc.dll.a.
+    # choosing -static or ld here will use libobjc.a instead of libobjc.dll.a, crashing on startup
     target_link_options(TestApp PRIVATE -static-libgcc -static-libstdc++)
 
-    # The Objective-C runtime is a DLL when using MinGW. Copy the exact runtime
-    # selected by the cross compiler next to the demo executable for local runs
-    # and packaged builds.
+    # copy required runtime DLLs for the Objective-C runtime
     execute_process(
         COMMAND ${CMAKE_OBJC_COMPILER} -print-file-name=libobjc-4.dll
         OUTPUT_VARIABLE RYO_OBJC_RUNTIME_DLL
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+
+    set(RYO_RUNTIME_DLLS "")
     if(EXISTS "${RYO_OBJC_RUNTIME_DLL}")
+        list(APPEND RYO_RUNTIME_DLLS "${RYO_OBJC_RUNTIME_DLL}")
+        get_filename_component(RYO_MINGW_LIB_DIR "${RYO_OBJC_RUNTIME_DLL}" DIRECTORY)
+
+        find_file(RYO_WINPTHREAD_RUNTIME_DLL
+            NAMES libwinpthread-1.dll
+            PATHS
+                "${RYO_MINGW_LIB_DIR}/../bin"
+                "${RYO_MINGW_LIB_DIR}"
+                "${CMAKE_SYSROOT}/bin"
+                "${CMAKE_SYSROOT}/x86_64-w64-mingw32/bin"
+            NO_DEFAULT_PATH
+        )
+        if(RYO_WINPTHREAD_RUNTIME_DLL)
+            list(APPEND RYO_RUNTIME_DLLS "${RYO_WINPTHREAD_RUNTIME_DLL}")
+        endif()
+
+        file(GLOB RYO_GCC_RUNTIME_DLLS "${RYO_MINGW_LIB_DIR}/libgcc_s_*.dll")
+        foreach(GCC_DLL ${RYO_GCC_RUNTIME_DLLS})
+            list(APPEND RYO_RUNTIME_DLLS "${GCC_DLL}")
+        endforeach()
+    endif()
+
+    if(RYO_RUNTIME_DLLS)
         add_custom_command(TARGET TestApp POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${RYO_OBJC_RUNTIME_DLL}"
-                "$<TARGET_FILE_DIR:TestApp>/libobjc-4.dll"
-            COMMENT "Copying the MinGW Objective-C runtime next to TestApp..."
+                ${RYO_RUNTIME_DLLS}
+                "$<TARGET_FILE_DIR:TestApp>"
+            COMMENT "Copying MinGW runtime DLLs next to TestApp..."
         )
     endif()
 elseif(VITA)

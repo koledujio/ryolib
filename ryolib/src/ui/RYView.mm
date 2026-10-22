@@ -4,6 +4,13 @@ using namespace ryo;
 
 @implementation RYView
 
+@synthesize superview = _superview;
+@synthesize viewRoot = _viewRoot;
+@synthesize subviews = _subviews;
+@synthesize position = _position;
+@synthesize size = _size;
+@synthesize backgroundColor = _backgroundColor;
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -49,26 +56,26 @@ using namespace ryo;
 }
 
 - (void)update:(float)deltaTime {
-    for (unsigned long i = 0; i < self.subviews.count; i++) {
-        RYView *view = (RYView *)[self.subviews objectAtIndex:i];
+    for (unsigned long i = 0; i < _subviews.count; i++) {
+        RYView *view = (RYView *)[_subviews objectAtIndex:i];
 
         [view update:deltaTime];
     }
 }
 
 - (void)layout:(Matrix4)parentMatrix {
-    _matrix = parentMatrix * Matrix4::translation(self.position.x, self.position.y, 0.0f) * Matrix4::scaling(self.size.x, self.size.y, 1.0f);
+    _matrix = parentMatrix * Matrix4::translation(_position.x, _position.y, 0.0f) * Matrix4::scaling(_size.x, _size.y, 1.0f);
 
-    for (unsigned long i = 0; i < self.subviews.count; i++) {
-        RYView *view = (RYView *)[self.subviews objectAtIndex:i];
+    for (unsigned long i = 0; i < _subviews.count; i++) {
+        RYView *view = (RYView *)[_subviews objectAtIndex:i];
 
         [view layout:_matrix];
     }
 }
 
 - (void)preDraw:(RYDrawContext &)context {
-    for (unsigned long i = 0; i < self.subviews.count; i++) {
-        RYView *view = (RYView *)[self.subviews objectAtIndex:i];
+    for (unsigned long i = 0; i < _subviews.count; i++) {
+        RYView *view = (RYView *)[_subviews objectAtIndex:i];
 
         [view preDraw:context];
     }
@@ -77,10 +84,10 @@ using namespace ryo;
 }
 
 - (void)draw:(RYDrawContext &)context {
-    context.renderer.draw_rect_color(self.backgroundColor, _matrix, &context.settings);
+    context.renderer.draw_rect_color(_backgroundColor, _matrix, &context.settings);
 
-    for (unsigned long i = 0; i < self.subviews.count; i++) {
-        RYView *view = (RYView *)[self.subviews objectAtIndex:i];
+    for (unsigned long i = 0; i < _subviews.count; i++) {
+        RYView *view = (RYView *)[_subviews objectAtIndex:i];
 
         [view draw:context];
     }
@@ -89,8 +96,8 @@ using namespace ryo;
 - (void)ry_setViewRoot:(RYViewRoot *)viewRoot {
     _viewRoot = viewRoot;
 
-    for (unsigned long i = 0; i < [self.subviews count]; i++) {
-        RYView *subview = [self.subviews objectAtIndex:i];
+    for (unsigned long i = 0; i < [_subviews count]; i++) {
+        RYView *subview = [_subviews objectAtIndex:i];
         [subview ry_setViewRoot:viewRoot];
     }
 }

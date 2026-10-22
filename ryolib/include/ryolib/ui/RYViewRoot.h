@@ -8,7 +8,7 @@
 @class RYView;
 
 @interface RYViewRoot : RYObject {
-@private
+@protected
     ryo::Renderer *_renderer;
     ryo::RenderTarget *_renderTarget;
     ryo::Vector2 _physicalResolution;
@@ -16,6 +16,7 @@
 
     RYView *_contentView;
     ryo::Vector2 _logicalSize;
+    ryo::Color _backgroundColor;
 }
 
 - (instancetype)initWithRenderer:(ryo::Renderer *)renderer
