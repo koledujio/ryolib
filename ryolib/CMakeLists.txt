@@ -12,6 +12,7 @@ set(RYOLIB_CORE_SOURCES
 
     src/objcpp/RYObject.mm
     src/objcpp/RYArray.mm
+    src/objcpp/RYString.mm
     src/ui/RYView.mm
     src/ui/RYViewRoot.mm
 )
