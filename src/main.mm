@@ -293,9 +293,11 @@ int main(int argc, char* argv[]) {
 
     window.size_get(width, height);
 
-    ryo::AudioEngine audioEngine;
-    if (!audioEngine.valid()) {
-        printf("Failed to create audio engine: %s\n", ryo::error_get());
+    RYError *error = nil;
+    RYAudioEngine *audioEngine = [RYAudioEngine engineWithBackend:RYAudioEngineBackendDefault error:&error];
+    if (!audioEngine) {
+        printf("Failed to create audio engine: %s\n", error ? error.message.UTF8String : "Unknown error");
+        return 0;
     }
 
     ryo::RendererConfig config = {};
@@ -626,5 +628,7 @@ int main(int argc, char* argv[]) {
         delete gamepad;
 
     menu_destroy(menuState);
+
+    [audioEngine release];
     return 0;
 }

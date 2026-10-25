@@ -1,9 +1,5 @@
 function(setup_sdl_mixer_backend TARGET_NAME)
-    file(GLOB_RECURSE SDL_MIXER_SOURCES CONFIGURE_DEPENDS
-        "src/backend/audio/sdl_mixer/*.cpp"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${SDL_MIXER_SOURCES})
+    target_compile_definitions(${TARGET_NAME} PUBLIC RYO_ENABLE_AUDIO_SDL=1)
 
     include(FetchContent)
 

@@ -66,18 +66,18 @@ public:
             return false;
         }
 
-        ryo::SoundDesc soundDesc = {};
-        soundDesc.path = "assets/float-play.flac";
-        soundDesc.loadType = ryo::SOUND_LOAD_TYPE_STREAM;
-        soundDesc.config.looping = true;
+        RYError *error = nil;
+        RYString *soundPath = [[RYString alloc] initWithUTF8String:"assets/float-play.flac"];
+        m_sound = [[RYSound soundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeStream error:&error] retain];
+        [soundPath release];
 
-        m_sound = new ryo::Sound(ctx.audioEngine, soundDesc);
-        if (!m_sound->valid()) {
-            printf("Failed to load sound: %s\n", ryo::error_get());
+        if (!m_sound) {
+            printf("Failed to load sound: %s\n", error.message.UTF8String);
             quit(ctx);
             return false;
         }
 
+        [m_sound setLooping:YES error:nullptr];
         m_playing = false;
 
         return true;
@@ -88,9 +88,9 @@ public:
             case ryo::EVENT_PAD_BUTTON_DOWN:
                 if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
                     if (m_playing)
-                        m_sound->pause();
+                        [m_sound pauseWithError:nullptr];
                     else
-                        m_sound->play();
+                        [m_sound playWithError:nullptr];
 
                     m_playing = !m_playing;
                 }
@@ -100,9 +100,9 @@ public:
             case ryo::EVENT_KEY_DOWN:
                 if (event.data.key.code == ryo::KEY_RETURN) {
                     if (m_playing)
-                        m_sound->pause();
+                        [m_sound pauseWithError:nullptr];
                     else
-                        m_sound->play();
+                        [m_sound playWithError:nullptr];
 
                     m_playing = !m_playing;
                 }
@@ -130,9 +130,10 @@ public:
             m_font = nullptr;
         }
 
-        if (m_sound != nullptr) {
-            delete m_sound;
-            m_sound = nullptr;
+        if (m_sound != nil) {
+            [m_sound stopWithError:nullptr];
+            [m_sound release];
+            m_sound = nil;
         }
     }
 
@@ -161,6 +162,10 @@ private:
     ryo::Font* m_font;
     int m_width, m_height;
     ryo::Texture* m_texture;
-    ryo::Sound* m_sound;
-    bool m_playing;
+#ifdef __OBJC__
+    RYSound* m_sound = nil;
+#else
+    void* m_sound = nullptr;
+#endif
+    bool m_playing = false;
 };

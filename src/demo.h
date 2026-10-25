@@ -5,7 +5,7 @@
 struct DemoContext {
     ryo::Window& window;
     ryo::Renderer& renderer;
-    ryo::AudioEngine& audioEngine;
+    RYAudioEngine *audioEngine;
     ryo::Gamepad*& gamepad;
     unsigned int screenWidth;
     unsigned int screenHeight;

@@ -5,8 +5,11 @@
 
 @implementation RYString
 
-@synthesize UTF8String = _utf8String;
 @synthesize UTF8Length = _utf8Length;
+
+- (const char *)UTF8String {
+    return _utf8String;
+}
 
 - (instancetype)initWithUTF8String:(const char *)string {
     self = [super init];

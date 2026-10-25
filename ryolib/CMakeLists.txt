@@ -11,11 +11,22 @@ set(RYOLIB_CORE_SOURCES
     src/debug/error/error.cpp
 
     src/objcpp/RYArray.mm
-    src/objcpp/RYError.mm
+    src/objcpp/RYError.m
     src/objcpp/RYObject.mm
-    src/objcpp/RYString.mm
+    src/objcpp/RYString.m
+
     src/ui/RYView.mm
     src/ui/RYViewRoot.mm
+
+    src/audio/AudioEngine.m
+    src/audio/Sound.m
+    src/audio/miniaudio/MiniaudioImplementation.c
+    src/audio/miniaudio/AudioEngine.m
+    src/audio/miniaudio/Sound.m
+    src/audio/sdl/AudioEngine.m
+    src/audio/sdl/Sound.m
+    src/audio/stub/AudioEngine.m
+    src/audio/stub/Sound.m
 )
 
 add_library(ryolib STATIC ${RYOLIB_CORE_SOURCES})
@@ -40,6 +51,8 @@ if (RYO_SAFETY)
 endif()
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_definitions(ryolib PUBLIC RYO_APPLE=1)
+
     if(IOS)
         target_compile_definitions(ryolib PUBLIC RYO_APPLE_IOS=1)
     else()
@@ -58,8 +71,13 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
 
+    # Audio backends
+
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
+
+    include(audio/SDLMixerBackend)
+    setup_sdl_mixer_backend(ryolib)
 elseif(WIN32)
     target_compile_definitions(ryolib PUBLIC RYO_WIN32=1)
 
@@ -75,8 +93,13 @@ elseif(WIN32)
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
 
+    # Audio backends
+
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
+
+    include(audio/SDLMixerBackend)
+    setup_sdl_mixer_backend(ryolib)
 elseif(VITA)
     target_compile_definitions(ryolib PUBLIC RYO_VITA=1)
 
@@ -95,6 +118,8 @@ elseif(VITA)
 
     include(text/SDLBackend)
     setup_sdl_ttf_backend(ryolib)
+
+    # Audio backends
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)

@@ -24,7 +24,7 @@ endif()
 add_subdirectory(ryolib)
 
 add_executable(TestApp
-    src/main.cpp
+    src/main.mm
 
     src/demos/objcpp_RYViewRoot/implementation.mm
     src/demos/objcpp_RYView/implementation.mm

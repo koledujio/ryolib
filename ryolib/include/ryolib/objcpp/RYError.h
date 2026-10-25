@@ -13,6 +13,6 @@
 @property (nonatomic, readonly) RYString *message;
 
 - (instancetype)initWithCode:(int)code
-                     message:(RYString *)message;
+                     message:(const char *)message;
 
 @end

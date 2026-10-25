@@ -5,8 +5,12 @@
 @synthesize code = _code;
 @synthesize message = _message;
 
+- (instancetype)init {
+    return [self initWithCode:0 message:""];
+}
+
 - (instancetype)initWithCode:(int)code
-                     message:(RYString *)message {
+                     message:(const char *)message {
     self = [super init];
 
     if (!self) {
@@ -19,7 +23,12 @@
     }
 
     _code = code;
-    _message = [message retain];
+    _message = [[RYString alloc] initWithUTF8String:message];
+
+    if (!_message) {
+        [self release];
+        return nil;
+    }
 
     return self;
 }
