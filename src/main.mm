@@ -294,7 +294,7 @@ int main(int argc, char* argv[]) {
     window.size_get(width, height);
 
     RYError *error = nil;
-    RYAudioEngine *audioEngine = [RYAudioEngine engineWithBackend:RYAudioEngineBackendDefault error:&error];
+    RYAudioEngine *audioEngine = [RYAudioEngine newEngineWithBackend:RYAudioEngineBackendDefault error:&error];
     if (!audioEngine) {
         printf("Failed to create audio engine: %s\n", error ? error.message.UTF8String : "Unknown error");
         return 0;

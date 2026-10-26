@@ -68,7 +68,7 @@ public:
 
         RYError *error = nil;
         RYString *soundPath = [[RYString alloc] initWithUTF8String:"assets/float-play.flac"];
-        m_sound = [[RYSound soundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeStream error:&error] retain];
+        m_sound = [RYSound newSoundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeStream error:&error];
         [soundPath release];
 
         if (!m_sound) {
@@ -77,7 +77,7 @@ public:
             return false;
         }
 
-        [m_sound setLooping:YES error:nullptr];
+        [m_sound setLooping:YES];
         m_playing = false;
 
         return true;
@@ -88,9 +88,9 @@ public:
             case ryo::EVENT_PAD_BUTTON_DOWN:
                 if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
                     if (m_playing)
-                        [m_sound pauseWithError:nullptr];
+                        [m_sound pause];
                     else
-                        [m_sound playWithError:nullptr];
+                        [m_sound play];
 
                     m_playing = !m_playing;
                 }
@@ -100,9 +100,9 @@ public:
             case ryo::EVENT_KEY_DOWN:
                 if (event.data.key.code == ryo::KEY_RETURN) {
                     if (m_playing)
-                        [m_sound pauseWithError:nullptr];
+                        [m_sound pause];
                     else
-                        [m_sound playWithError:nullptr];
+                        [m_sound play];
 
                     m_playing = !m_playing;
                 }
@@ -131,7 +131,7 @@ public:
         }
 
         if (m_sound != nil) {
-            [m_sound stopWithError:nullptr];
+            [m_sound stop];
             [m_sound release];
             m_sound = nil;
         }

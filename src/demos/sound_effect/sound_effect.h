@@ -68,7 +68,7 @@ public:
 
         RYError *error = nil;
         RYString *soundPath = [[RYString alloc] initWithUTF8String:"assets/mikudayo.mp3"];
-        m_sound = [[RYSound soundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeDecode error:&error] retain];
+        m_sound = [RYSound newSoundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeDecode error:&error];
         [soundPath release];
 
         if (!m_sound) {
@@ -84,15 +84,13 @@ public:
         switch (event.type) {
             case ryo::EVENT_PAD_BUTTON_DOWN:
                 if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
-                    [m_sound stopWithError:nullptr];
-                    [m_sound playWithError:nullptr];
+                    [m_sound play];
                 }
                 break;
             
             case ryo::EVENT_KEY_DOWN:
                 if (event.data.key.code == ryo::KEY_RETURN) {
-                    [m_sound stopWithError:nullptr];
-                    [m_sound playWithError:nullptr];
+                    [m_sound play];
                 }
                 break;
 
@@ -118,7 +116,7 @@ public:
         }
 
         if (m_sound != nil) {
-            [m_sound stopWithError:nullptr];
+            [m_sound stop];
             [m_sound release];
             m_sound = nil;
         }

@@ -20,13 +20,11 @@ set(RYOLIB_CORE_SOURCES
 
     src/audio/AudioEngine.m
     src/audio/Sound.m
+    src/audio/AudioBackend.m
     src/audio/miniaudio/MiniaudioImplementation.c
-    src/audio/miniaudio/AudioEngine.m
-    src/audio/miniaudio/Sound.m
-    src/audio/sdl/AudioEngine.m
-    src/audio/sdl/Sound.m
-    src/audio/stub/AudioEngine.m
-    src/audio/stub/Sound.m
+    src/audio/miniaudio/AudioBackendMiniaudio.m
+    src/audio/sdl/AudioBackendSDL.m
+    src/audio/stub/AudioBackendStub.m
 )
 
 add_library(ryolib STATIC ${RYOLIB_CORE_SOURCES})
