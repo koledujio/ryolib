@@ -1,4 +1,4 @@
-#import "ryolib/objcpp/RYString.h"
+#import "ryolib/objc/RYString.h"
 
 #include <stdlib.h>
 #include <string.h>

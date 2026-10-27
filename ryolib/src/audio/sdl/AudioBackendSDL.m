@@ -30,7 +30,7 @@ typedef struct {
     if (g_numAudioBackends == 0) {
         if (!MIX_Init()) {
             if (error)
-                *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+                *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendInitializationFailed message:SDL_GetError()];
             [self release];
             return nil;
         }
@@ -39,7 +39,7 @@ typedef struct {
     _mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
     if (!_mixer) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendInitializationFailed message:SDL_GetError()];
 
         if (g_numAudioBackends == 0) {
             MIX_Quit();
@@ -76,13 +76,13 @@ typedef struct {
 
     if (!_mixer) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Audio engine is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Audio engine is not initialized"];
         return NO;
     }
 
     if (!MIX_SetMixerGain(_mixer, volume)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -98,7 +98,7 @@ typedef struct {
 
     if (!_mixer) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"SDL mixer is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"SDL mixer is not initialized"];
         return NULL;
     }
 
@@ -106,21 +106,21 @@ typedef struct {
     MIX_Audio *audio = MIX_LoadAudio(_mixer, path.UTF8String, predecode);
     if (!audio) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendLoadAudioFailed message:SDL_GetError()];
         return NULL;
     }
 
     MIX_Track *track = MIX_CreateTrack(_mixer);
     if (!track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         MIX_DestroyAudio(audio);
         return NULL;
     }
 
     if (!MIX_SetTrackAudio(track, audio)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         MIX_DestroyTrack(track);
         MIX_DestroyAudio(audio);
         return NULL;
@@ -129,7 +129,7 @@ typedef struct {
     unsigned int *audioRefCount = (unsigned int *)malloc(sizeof(unsigned int));
     if (!audioRefCount) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate audio ref count"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate audio ref count"];
         MIX_DestroyTrack(track);
         MIX_DestroyAudio(audio);
         return NULL;
@@ -139,7 +139,7 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)malloc(sizeof(RYSDLSoundHandle));
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate sound handle"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate sound handle"];
         free(audioRefCount);
         MIX_DestroyTrack(track);
         MIX_DestroyAudio(audio);
@@ -161,20 +161,20 @@ typedef struct {
     RYSDLSoundHandle *source = (RYSDLSoundHandle *)soundHandle;
     if (!_mixer || !source || !source->audio) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid source sound or mixer"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid source sound or mixer"];
         return NULL;
     }
 
     MIX_Track *track = MIX_CreateTrack(_mixer);
     if (!track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NULL;
     }
 
     if (!MIX_SetTrackAudio(track, source->audio)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         MIX_DestroyTrack(track);
         return NULL;
     }
@@ -186,7 +186,7 @@ typedef struct {
     RYSDLSoundHandle *copy = (RYSDLSoundHandle *)malloc(sizeof(RYSDLSoundHandle));
     if (!copy) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate copy sound handle"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate copy sound handle"];
         if (source->audioRefCount) {
             (*source->audioRefCount)--;
         }
@@ -235,14 +235,14 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
     if (MIX_TrackPaused(handle->track)) {
         if (!MIX_ResumeTrack(handle->track)) {
             if (error)
-                *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+                *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
             return NO;
         }
         return YES;
@@ -256,7 +256,7 @@ typedef struct {
 
     if (!MIX_PlayTrack(handle->track, 0)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -272,13 +272,13 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
     if (!MIX_PauseTrack(handle->track)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -294,13 +294,13 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
     if (!MIX_StopTrack(handle->track, 0)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -318,7 +318,7 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
@@ -330,7 +330,7 @@ typedef struct {
 
     if (!MIX_SetTrackPlaybackPosition(handle->track, frames)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -347,13 +347,13 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
     if (!MIX_SetTrackGain(handle->track, volume)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -370,13 +370,13 @@ typedef struct {
     RYSDLSoundHandle *handle = (RYSDLSoundHandle *)soundHandle;
     if (!handle || !handle->track) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid sound track"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid sound track"];
         return NO;
     }
 
     if (!MIX_SetTrackLoops(handle->track, looping ? -1 : 0)) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:SDL_GetError()];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:SDL_GetError()];
         return NO;
     }
 
@@ -453,7 +453,7 @@ typedef struct {
 
 - (instancetype)initBackendWithError:(RYError **)error {
     if (error)
-        *error = [[RYError alloc] initWithCode:-1 message:"SDL audio backend is not supported on this platform"];
+        *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendPlatformNotSupported message:"SDL audio backend is not supported on this platform"];
     
     return nil;
 }

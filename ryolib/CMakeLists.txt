@@ -10,10 +10,10 @@ set(RYOLIB_CORE_SOURCES
 
     src/debug/error/error.cpp
 
-    src/objcpp/RYArray.mm
-    src/objcpp/RYError.m
-    src/objcpp/RYObject.mm
-    src/objcpp/RYString.m
+    src/objc/RYArray.m
+    src/objc/RYError.m
+    src/objc/RYObject.m
+    src/objc/RYString.m
 
     src/ui/RYView.mm
     src/ui/RYViewRoot.mm

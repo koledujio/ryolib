@@ -1,8 +1,8 @@
 #pragma once
 
-#import "../objcpp/RYObject.h"
-#import "../objcpp/RYString.h"
-#import "../objcpp/RYError.h"
+#import "../objc/RYObject.h"
+#import "../objc/RYString.h"
+#import "../objc/RYError.h"
 
 /** Determines how a sound is loaded. */
 typedef enum {

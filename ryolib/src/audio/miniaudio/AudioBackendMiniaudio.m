@@ -24,7 +24,7 @@ typedef struct {
     _engine = (ma_engine *)malloc(sizeof(ma_engine));
     if (!_engine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate miniaudio engine memory"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate miniaudio engine memory"];
         [self release];
         return nil;
     }
@@ -32,7 +32,7 @@ typedef struct {
     ma_result result = ma_engine_init(NULL, _engine);
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendInitializationFailed message:ma_result_description(result)];
         free(_engine);
         _engine = NULL;
         [self release];
@@ -60,14 +60,14 @@ typedef struct {
 
     if (!_engine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Audio engine is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Audio engine is not initialized"];
         return NO;
     }
 
     ma_result result = ma_engine_set_volume(_engine, volume);
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(result)];
         return NO;
     }
 
@@ -83,7 +83,7 @@ typedef struct {
 
     if (!_engine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Miniaudio engine is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Miniaudio engine is not initialized"];
         return NULL;
     }
 
@@ -102,7 +102,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)malloc(sizeof(RYMiniaudioSoundHandle));
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate sound memory"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate sound memory"];
         return NULL;
     }
 
@@ -117,7 +117,7 @@ typedef struct {
 
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(result)];
         free(handle);
         return NULL;
     }
@@ -134,7 +134,7 @@ typedef struct {
 
     if (!_engine || !soundHandle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid source sound or engine"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Invalid source sound or engine"];
         return NULL;
     }
 
@@ -142,14 +142,14 @@ typedef struct {
     RYMiniaudioSoundHandle *copy = (RYMiniaudioSoundHandle *)malloc(sizeof(RYMiniaudioSoundHandle));
     if (!copy) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Failed to allocate sound copy memory"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralOutOfMemory message:"Failed to allocate sound copy memory"];
         return NULL;
     }
 
     ma_result result = ma_sound_init_copy(_engine, &source->sound, 0, NULL, &copy->sound);
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(result)];
         free(copy);
         return NULL;
     }
@@ -175,7 +175,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -183,7 +183,7 @@ typedef struct {
         ma_result startResult = ma_sound_start(&handle->sound);
         if (startResult != MA_SUCCESS) {
             if (error)
-                *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(startResult)];
+                *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(startResult)];
             return NO;
         }
         handle->paused = NO;
@@ -201,14 +201,14 @@ typedef struct {
 
     if (seekResult != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(seekResult)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(seekResult)];
         return NO;
     }
 
     ma_result startResult = ma_sound_start(&handle->sound);
     if (startResult != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(startResult)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(startResult)];
         return NO;
     }
 
@@ -225,14 +225,14 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
     ma_result result = ma_sound_stop(&handle->sound);
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(result)];
         return NO;
     }
 
@@ -249,7 +249,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -272,7 +272,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle || !_engine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -282,7 +282,7 @@ typedef struct {
     ma_result result = ma_sound_seek_to_pcm_frame(&handle->sound, seekFrame);
     if (result != MA_SUCCESS) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:ma_result_description(result)];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendError message:ma_result_description(result)];
         return NO;
     }
 
@@ -299,7 +299,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -317,7 +317,7 @@ typedef struct {
     RYMiniaudioSoundHandle *handle = (RYMiniaudioSoundHandle *)soundHandle;
     if (!handle) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -389,7 +389,7 @@ typedef struct {
 
 - (instancetype)initBackendWithError:(RYError **)error {
     if (error)
-        *error = [[RYError alloc] initWithCode:-1 message:"Miniaudio backend is not supported on this platform"];
+        *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendPlatformNotSupported message:"Miniaudio backend is not supported on this platform"];
     
     return nil;
 }

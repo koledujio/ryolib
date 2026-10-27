@@ -1,4 +1,4 @@
-#import "ryolib/objcpp/RYError.h"
+#import "ryolib/objc/RYError.h"
 
 @implementation RYError
 
@@ -6,10 +6,10 @@
 @synthesize message = _message;
 
 - (instancetype)init {
-    return [self initWithCode:0 message:""];
+    return [self initWithCode:RYErrorCodeUnknown message:"No error message provided"];
 }
 
-- (instancetype)initWithCode:(int)code
+- (instancetype)initWithCode:(RYErrorCode)code
                      message:(const char *)message {
     self = [super init];
 

@@ -54,7 +54,7 @@
 
     if (backendClass == Nil) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid or unsupported audio backend"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidBackend message:"Invalid or unsupported audio backend"];
         return nil;
     }
 
@@ -81,7 +81,7 @@
 
     if (!customBackend) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Custom backend is nil"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidBackend message:"Custom backend is nil"];
         return nil;
     }
 
@@ -120,7 +120,7 @@
 
     if (masterVolume < 0.0f) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid master volume amount (below 0.0f)"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidVolume message:"Invalid master volume amount (below 0.0f)"];
         return NO;
     }
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../objcpp/RYObject.h"
-#include "../objcpp/RYArray.h"
+#include "../objc/RYObject.h"
+#include "../objc/RYArray.h"
 
 #include "../math.h"
 #include "../graphics.h"

@@ -1,7 +1,7 @@
 #pragma once
 
-#import "../objcpp/RYObject.h"
-#import "../objcpp/RYError.h"
+#import "../objc/RYObject.h"
+#import "../objc/RYError.h"
 #import "AudioBackend.h"
 
 /**

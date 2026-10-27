@@ -23,7 +23,7 @@
                      loadType:(RYSoundLoadType)loadType
                         error:(RYError **)error {
     if (error)
-        *error = [[RYError alloc] initWithCode:-1 message:"Audio backend does not support creating sounds"];
+        *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendFeatureNotSupported message:"Audio backend does not support creating sounds"];
     
     return NULL;
 }
@@ -31,7 +31,7 @@
 - (void *)copySound:(void *)soundHandle
               error:(RYError **)error {
     if (error)
-        *error = [[RYError alloc] initWithCode:-1 message:"Audio backend does not support copying sounds"];
+        *error = [[RYError alloc] initWithCode:RYErrorCodeAudioBackendFeatureNotSupported message:"Audio backend does not support copying sounds"];
     
     return NULL;
 }

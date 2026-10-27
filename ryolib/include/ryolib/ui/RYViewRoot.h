@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../objcpp/RYObject.h"
+#include "../objc/RYObject.h"
 
 #include "../math.h"
 #include "../graphics.h"

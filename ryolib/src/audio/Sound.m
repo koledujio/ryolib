@@ -31,13 +31,13 @@
 
     if (!audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Audio engine is nil"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidAudioEngine message:"Audio engine is nil"];
         return nil;
     }
 
     if (!path) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound path is nil"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidSoundPath message:"Sound path is nil"];
         return nil;
     }
 
@@ -83,7 +83,7 @@
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return nil;
     }
 
@@ -126,7 +126,7 @@
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -144,7 +144,7 @@
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -162,7 +162,7 @@
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -180,13 +180,13 @@
 
     if (time < 0.0) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid time (below 0.0)"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidSeekTime message:"Invalid time (below 0.0)"];
         return NO;
     }
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -204,13 +204,13 @@
 
     if (volume < 0.0f) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Invalid volume amount (below 0.0f)"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeAudioInvalidVolume message:"Invalid volume amount (below 0.0f)"];
         return NO;
     }
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
@@ -233,7 +233,7 @@
 
     if (!_backendSound || !_audioEngine) {
         if (error)
-            *error = [[RYError alloc] initWithCode:-1 message:"Sound is not initialized"];
+            *error = [[RYError alloc] initWithCode:RYErrorCodeGeneralNotInitialized message:"Sound is not initialized"];
         return NO;
     }
 
