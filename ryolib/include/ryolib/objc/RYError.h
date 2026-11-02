@@ -21,6 +21,28 @@ typedef enum {
     RYErrorCodeAudioBackendFeatureNotSupported  = 208,
     RYErrorCodeAudioBackendError                = 209,
     RYErrorCodeAudioBackendLoadAudioFailed      = 210,
+
+    RYErrorCodeImageInvalidPath                 = 300,
+    RYErrorCodeImageInvalidMemory               = 301,
+    RYErrorCodeImageLoadFailed                  = 302,
+    RYErrorCodeImageInvalidBackend              = 303,
+    RYErrorCodeImageBackendInitializationFailed = 304,
+    RYErrorCodeImageBackendPlatformNotSupported = 305,
+    RYErrorCodeImageBackendFeatureNotSupported  = 306,
+    RYErrorCodeImageBackendError                = 307,
+    RYErrorCodeImageTextureCreationFailed       = 308,
+
+    RYErrorCodeTextInvalidFontPath              = 400,
+    RYErrorCodeTextInvalidFontSize              = 401,
+    RYErrorCodeTextInvalidMemory                = 402,
+    RYErrorCodeTextLoadFontFailed               = 403,
+    RYErrorCodeTextInvalidBackend               = 404,
+    RYErrorCodeTextBackendInitializationFailed  = 405,
+    RYErrorCodeTextBackendPlatformNotSupported  = 406,
+    RYErrorCodeTextBackendFeatureNotSupported   = 407,
+    RYErrorCodeTextBackendError                 = 408,
+    RYErrorCodeTextRenderFailed                 = 409,
+    RYErrorCodeTextFallbackFailed               = 410,
 } RYErrorCode;
 
 @interface RYError : RYObject {

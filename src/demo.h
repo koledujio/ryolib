@@ -11,7 +11,7 @@ struct DemoContext {
     unsigned int screenHeight;
     const ryo::DrawSettings& baseDrawSettings;
     const ryo::Pipeline& textPipeline;
-    ryo::Font& font;
+    RYFont *font;
 };
 
 class Demo {

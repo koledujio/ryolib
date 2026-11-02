@@ -26,9 +26,22 @@ public:
         m_settings.pipelineOverride = nullptr;
         m_settings.stencil = nullptr;
 
-        m_texture = ryo::image_load_texture(ctx.renderer, "assets/hatsune-miku.png", m_width, m_height);
+        RYError *error = nil;
+        RYString *path = [[RYString alloc] initWithUTF8String:"assets/hatsune-miku.png"];
+        RYImage *image = [RYImage newImageWithPath:path error:&error];
+        [path release];
+        if (!image) {
+            printf("Failed to load image: %s\n", error ? error.message.UTF8String : "unknown");
+            return false;
+        }
+
+        m_width = image.width;
+        m_height = image.height;
+        m_texture = [image createTextureWithRenderer:ctx.renderer error:&error];
+        [image release];
+
         if (m_texture == nullptr || !m_texture->valid()) {
-            printf("Failed to load texture: %s\n", ryo::error_get());
+            printf("Failed to create texture: %s\n", error ? error.message.UTF8String : "unknown");
             return false;
         }
 

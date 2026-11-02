@@ -38,9 +38,23 @@ public:
         m_settings.pipelineOverride = m_pipeline;
         m_settings.stencil = nullptr;
 
-        m_texture = ryo::image_load_texture(ctx.renderer, "assets/kasane-teto.png", m_width, m_height);
+        RYError *error = nil;
+        RYString *path = [[RYString alloc] initWithUTF8String:"assets/kasane-teto.png"];
+        RYImage *image = [RYImage newImageWithPath:path error:&error];
+        [path release];
+        if (!image) {
+            printf("Failed to load image: %s\n", error ? error.message.UTF8String : "unknown");
+            quit(ctx);
+            return false;
+        }
+
+        m_width = image.width;
+        m_height = image.height;
+        m_texture = [image createTextureWithRenderer:ctx.renderer error:&error];
+        [image release];
+
         if (m_texture == nullptr || !m_texture->valid()) {
-            printf("Failed to load texture: %s\n", ryo::error_get());
+            printf("Failed to load texture: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
@@ -62,12 +76,8 @@ public:
         }
     }
 
-    void update(DemoContext& ctx, float dt) override {
-        m_time += dt;
-    }
-
     void render(DemoContext& ctx) override {
-        ryo::Color clearColor = {sin(m_time), cos(m_time), sin(m_time), 1.0f};
+        ryo::Color clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
         ryo::Color imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
 
         ctx.renderer.draw_pass_begin(nullptr, &clearColor);
@@ -78,11 +88,10 @@ public:
     }
 
 private:
-    float m_time = 0.0f;
-    ryo::Pipeline* m_pipeline;
+    ryo::Pipeline* m_pipeline = nullptr;
     ryo::Camera m_camera;
     ryo::DrawSettings m_settings;
     ryo::Matrix4 m_matrix;
     int m_width, m_height;
-    ryo::Texture* m_texture;
+    ryo::Texture* m_texture = nullptr;
 };

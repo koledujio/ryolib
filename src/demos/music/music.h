@@ -37,36 +37,37 @@ public:
         m_settings.pipelineOverride = m_pipeline;
         m_settings.stencil = nullptr;
 
-        ryo::FontConfig fontConfig = {};
-        fontConfig.path = "assets/lato-400-normal.ttf";
-        fontConfig.fontSize = 30.0f;
-
-        m_font = new ryo::Font(fontConfig);
-        if (!m_font->valid()) {
-            printf("Failed to load font: %s\n", ryo::error_get());
+        RYError *error = nil;
+        RYString *fontPath = [[RYString alloc] initWithUTF8String:"assets/lato-400-normal.ttf"];
+        m_font = [RYFont newFontWithPath:fontPath size:30.0f error:&error];
+        [fontPath release];
+        if (!m_font) {
+            printf("Failed to load font: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return 0;
         }
 
-        const char* text = "Press X or ENTER to play/pause the music!";
-        ryo::Color textColor = {1.0f, 1.0f, 1.0f, 1.0f};
-
-        void* pixels = nullptr;
-        if (!m_font->pixels_render_line(text, textColor, m_width, m_height, pixels)) {
-            printf("Failed to render text line: %s\n", ryo::error_get());
+        RYString *text = [[RYString alloc] initWithUTF8String:"Press X or ENTER to play/pause the music!"];
+        RYColor textColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
+        RYImage *image = [m_font renderLineToImage:text color:textColor error:&error];
+        [text release];
+        if (!image) {
+            printf("Failed to render text line: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
-        m_texture = new ryo::Texture(ctx.renderer, pixels, m_width, m_height);
-        m_font->pixels_free(pixels);
+        m_width = image.width;
+        m_height = image.height;
+        m_texture = [image createTextureWithRenderer:ctx.renderer error:&error];
+        [image release];
+
         if (m_texture == nullptr || !m_texture->valid()) {
-            printf("Failed to create text texture: %s\n", ryo::error_get());
+            printf("Failed to create text texture: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
-        RYError *error = nil;
         RYString *soundPath = [[RYString alloc] initWithUTF8String:"assets/float-play.flac"];
         m_sound = [RYSound newSoundWithEngine:ctx.audioEngine path:soundPath loadType:RYSoundLoadTypeStream error:&error];
         [soundPath release];
@@ -125,9 +126,9 @@ public:
             m_pipeline = nullptr;
         }
 
-        if (m_font != nullptr) {
-            delete m_font;
-            m_font = nullptr;
+        if (m_font != nil) {
+            [m_font release];
+            m_font = nil;
         }
 
         if (m_sound != nil) {
@@ -159,7 +160,7 @@ private:
     ryo::Pipeline* m_pipeline;
     ryo::Camera m_camera;
     ryo::DrawSettings m_settings;
-    ryo::Font* m_font;
+    RYFont* m_font = nil;
     int m_width, m_height;
     ryo::Texture* m_texture;
 #ifdef __OBJC__

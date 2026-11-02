@@ -1,9 +1,5 @@
 function(setup_sdl_ttf_backend TARGET_NAME)
-    file(GLOB_RECURSE SDL_TTF_SOURCES CONFIGURE_DEPENDS
-        "src/backend/text/sdl_ttf/*.cpp"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${SDL_TTF_SOURCES})
+    target_compile_definitions(${TARGET_NAME} PUBLIC RYO_ENABLE_TEXT_SDL=1)
 
     include(FetchContent)
 

@@ -1,7 +1,3 @@
 function(setup_stub_image_backend TARGET_NAME)
-    file(GLOB_RECURSE STUB_IMAGE_SOURCES CONFIGURE_DEPENDS
-        "src/backend/image/stub/*.cpp"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${STUB_IMAGE_SOURCES})
+    target_compile_definitions(${TARGET_NAME} PUBLIC RYO_ENABLE_IMAGE_STUB=1)
 endfunction(setup_stub_image_backend)

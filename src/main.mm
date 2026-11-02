@@ -207,17 +207,22 @@ static void menu_layout_update(MenuState& menu, unsigned int screenHeight) {
         menu.scrollOffset = menu.selectedIndex - menu.visibleItemCount + 1;
 }
 
-static void menu_init(MenuState& menu, const ryo::Renderer& renderer, const ryo::Font& font, const std::vector<std::string>& titles) {
-    ryo::Color textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+static void menu_init(MenuState& menu, const ryo::Renderer& renderer, RYFont *font, const std::vector<std::string>& titles) {
+    RYColor textColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
 
     for (const auto& title : titles) {
         MenuItem item;
         item.title = title;
 
-        void* pixels = nullptr;
-        if (font.pixels_render_line(title.c_str(), textColor, item.textWidth, item.textHeight, pixels)) {
-            item.texture = new ryo::Texture(renderer, pixels, item.textWidth, item.textHeight);
-            font.pixels_free(pixels);
+        RYString *titleStr = [[RYString alloc] initWithUTF8String:title.c_str()];
+        RYImage *image = [font renderLineToImage:titleStr color:textColor error:NULL];
+        [titleStr release];
+
+        if (image) {
+            item.textWidth = image.width;
+            item.textHeight = image.height;
+            item.texture = [image createTextureWithRenderer:renderer];
+            [image release];
         }
 
         menu.items.push_back(item);
@@ -353,13 +358,12 @@ int main(int argc, char* argv[]) {
 
     ryo::Color blackColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
-    ryo::FontConfig fontConfig;
-    fontConfig.path = "assets/lato-400-normal.ttf";
-    fontConfig.fontSize = MENU_FONT_SIZE * contentScale;
-
-    ryo::Font font(fontConfig);
-    if (!font.valid()) {
-        printf("Failed to load font: %s", ryo::error_get());
+    RYError *fontError = nil;
+    RYString *fontPath = [[RYString alloc] initWithUTF8String:"assets/lato-400-normal.ttf"];
+    RYFont *font = [RYFont newFontWithPath:fontPath size:MENU_FONT_SIZE * contentScale error:&fontError];
+    [fontPath release];
+    if (!font) {
+        printf("Failed to load font: %s\n", fontError ? fontError.message.UTF8String : "unknown");
         return 0;
     }
 
@@ -629,6 +633,7 @@ int main(int argc, char* argv[]) {
 
     menu_destroy(menuState);
 
+    [font release];
     [audioEngine release];
     return 0;
 }
