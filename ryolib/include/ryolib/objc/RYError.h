@@ -43,6 +43,16 @@ typedef enum {
     RYErrorCodeTextBackendError                 = 408,
     RYErrorCodeTextRenderFailed                 = 409,
     RYErrorCodeTextFallbackFailed               = 410,
+
+    RYErrorCodeWindowingGeneralError            = 500,
+    RYErrorCodeWindowingInitializationFailed    = 501,
+    RYErrorCodeWindowingWindowCreationFailed    = 502,
+    RYErrorCodeWindowingInvalidWindow           = 503,
+    RYErrorCodeWindowingInvalidApplication      = 504,
+    RYErrorCodeWindowingGamepadCreationFailed   = 505,
+    RYErrorCodeWindowingInvalidGamepad          = 506,
+    RYErrorCodeWindowingFeatureNotSupported     = 507,
+    RYErrorCodeWindowingInvalidSize             = 508,
 } RYErrorCode;
 
 @interface RYError : RYObject {

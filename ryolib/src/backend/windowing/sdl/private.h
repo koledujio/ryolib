@@ -1,43 +1,40 @@
 #pragma once
 
-#include "../private.h"
-
-#include "ryolib/windowing.h"
+#import "ryolib/windowing.h"
+#import "ryolib/objc/RYError.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_metal.h>
 
-namespace ryo {
-    struct InternalApplication {
-    };
+typedef struct {
+    SDL_Window *sdlWindow;
+    RYString *title;
+    unsigned int flags;
+    unsigned int orientations;
+    RYWindowID id;
+    SDL_MetalView metalView;
+} RYInternalWindow;
 
-    struct InternalWindow {
-        SDL_Window* sdlWindow = nullptr;
-        const char* title = nullptr;
-        unsigned int flags = 0;
-        unsigned int orientations = ORIENTATION_NONE;
-        WindowID id = 0;
-        SDL_MetalView metalView = nullptr;
-    };
+typedef struct {
+    SDL_Gamepad *sdlGamepad;
+    int id;
+    RYGamepadType type;
+} RYInternalGamepad;
 
-    struct InternalGamepad {
-        SDL_Gamepad* sdlGamepad = nullptr;
-        int id = -1;
-        GamepadType type = PAD_TYPE_UNKNOWN;
-    };
+typedef struct {
+    int dummy;
+} RYInternalApplication;
 
-    extern bool sdl_initialized;
-    extern uint32_t window_count;
+extern BOOL ry_sdl_initialized;
 
-    GamepadButton _gamepad_get_ryo_button(unsigned char event);
-    GamepadType _gamepad_get_ryo_type(SDL_GamepadType type);
-    GamepadAxis _gamepad_get_ryo_axis(uint8_t axis);
-    KeyCode _keyboard_get_ryo_key(SDL_Scancode scancode);
-    const PlatformCapabilities& _platform_get_capabilities();
-    bool _platform_get_forced_resolution(unsigned int& outWidth, unsigned int& outHeight);
-    float _platform_get_content_scale(SDL_Window* sdlWindow);
-    bool _platform_is_tablet();
+RYGamepadButton ry_gamepad_get_ryo_button(unsigned char event);
+RYGamepadType ry_gamepad_get_ryo_type(SDL_GamepadType type);
+RYGamepadAxis ry_gamepad_get_ryo_axis(uint8_t axis);
+RYKeyCode ry_keyboard_get_ryo_key(SDL_Scancode scancode);
+const RYPlatformCapabilities *ry_platform_get_capabilities(void);
+BOOL ry_platform_get_forced_resolution(unsigned int *outWidth, unsigned int *outHeight);
+float ry_platform_get_content_scale(SDL_Window *sdlWindow);
+BOOL ry_platform_is_tablet(void);
 
-    bool _sdl_initialize();
-    void _sdl_quit();
-}
+BOOL ry_sdl_initialize(void);
+void ry_sdl_quit(void);

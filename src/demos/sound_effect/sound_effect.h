@@ -81,16 +81,16 @@ public:
         return true;
     }
 
-    void on_event(DemoContext& ctx, const ryo::Event& event) override {
+    void on_event(DemoContext& ctx, const RYEvent& event) override {
         switch (event.type) {
-            case ryo::EVENT_PAD_BUTTON_DOWN:
-                if (event.data.pad.button == ryo::PAD_BUTTON_DOWN) {
+            case RYEventTypePadButtonDown:
+                if (event.data.pad.button == RYGamepadButtonDown) {
                     [m_sound play];
                 }
                 break;
             
-            case ryo::EVENT_KEY_DOWN:
-                if (event.data.key.code == ryo::KEY_RETURN) {
+            case RYEventTypeKeyDown:
+                if (event.data.key.code == RYKeyCodeReturn) {
                     [m_sound play];
                 }
                 break;

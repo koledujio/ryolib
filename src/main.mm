@@ -113,7 +113,7 @@ struct MenuTouch {
     float time = 0.0f;           // seconds since startup, advanced once per frame
 };
 
-static void menu_touch_begin(MenuTouch& touch, const ryo::Event& event) {
+static void menu_touch_begin(MenuTouch& touch, const RYEvent& event) {
     MenuTouch::Finger finger;
     finger.id = event.data.touch.fingerId;
     finger.startX = event.data.touch.x;
@@ -125,7 +125,7 @@ static void menu_touch_begin(MenuTouch& touch, const ryo::Event& event) {
     touch.fingers.push_back(finger);
 }
 
-static MenuGesture menu_touch_move(MenuTouch& touch, const ryo::Event& event) {
+static MenuGesture menu_touch_move(MenuTouch& touch, const RYEvent& event) {
     for (auto& finger : touch.fingers) {
         if (finger.id != event.data.touch.fingerId)
             continue;
@@ -149,7 +149,7 @@ static MenuGesture menu_touch_move(MenuTouch& touch, const ryo::Event& event) {
     return MENU_GESTURE_NONE;
 }
 
-static MenuGesture menu_touch_end(MenuTouch& touch, const ryo::Event& event) {
+static MenuGesture menu_touch_end(MenuTouch& touch, const RYEvent& event) {
     for (size_t i = 0; i < touch.fingers.size(); i++) {
         if (touch.fingers[i].id != event.data.touch.fingerId)
             continue;
@@ -284,32 +284,45 @@ int main(int argc, char* argv[]) {
     width = 1280;
     height = 720;
 
-    ryo::Application app;
-    if (!app.valid()) {
-        printf("Failed to initialize application: %s\n", ryo::error_get());
+    RYError *appError = nil;
+    RYApplication *app = [RYApplication newApplicationWithError:&appError];
+    if (!app) {
+        printf("Failed to initialize application: %s\n", appError ? appError.message.UTF8String : "Unknown error");
         return 0;
     }
 
-    ryo::Window window(app, "Ryolib demonstration menu", width, height, ryo::WINDOW_FLAG_RESIZABLE);
-    if (!window.valid()) {
-        printf("Failed to create window: %s", ryo::error_get());
+    RYError *windowError = nil;
+    RYString *windowTitle = [[RYString alloc] initWithUTF8String:"Ryolib demonstration menu"];
+    RYWindow *window = [RYWindow newWindowWithApplication:app
+                                                    title:windowTitle
+                                                    width:width
+                                                   height:height
+                                                    flags:RYWindowFlagResizable
+                                      allowedOrientations:RYDisplayOrientationLandscape
+                                                    error:&windowError];
+    [windowTitle release];
+    if (!window) {
+        printf("Failed to create window: %s\n", windowError ? windowError.message.UTF8String : "Unknown error");
+        [app release];
         return 0;
     }
 
-    window.size_get(width, height);
+    [window getSize:&width height:&height];
 
     RYError *error = nil;
     RYAudioEngine *audioEngine = [RYAudioEngine newEngineWithBackend:RYAudioEngineBackendDefault error:&error];
     if (!audioEngine) {
         printf("Failed to create audio engine: %s\n", error ? error.message.UTF8String : "Unknown error");
+        [window release];
+        [app release];
         return 0;
     }
 
     ryo::RendererConfig config = {};
-    config.nativeWindowHandle = window.nwh_get();
+    config.nativeWindowHandle = window.nativeWindowHandle;
     config.width = width;
     config.height = height;
-    config.contentScale = window.hidpi_scale_get();
+    config.contentScale = window.hidpiScale;
 
     ryo::Renderer renderer(config);
     if (!renderer.valid()) {
@@ -397,7 +410,7 @@ int main(int argc, char* argv[]) {
     }
     menu_init(menuState, renderer, font, titles);
 
-    ryo::Gamepad* gamepad = nullptr;
+    RYGamepad *gamepad = nil;
     Demo* activeDemo = nullptr;
 
     DemoContext ctx = {
@@ -412,9 +425,9 @@ int main(int argc, char* argv[]) {
         font
     };
 
-    ryo::Event windowEvent;
+    RYEvent windowEvent;
     bool running = true;
-    bool quitSupported = app.capabilities_get().quitSupported;
+    bool quitSupported = app.capabilities.quitSupported;
     MenuTouch menuTouch;
 
     auto enter_selected_demo = [&]() {
@@ -436,23 +449,23 @@ int main(int argc, char* argv[]) {
     };
 
     while (running) {
-        while (app.event_poll(windowEvent)) {
-            if (windowEvent.type == ryo::EVENT_PAD_ADDED) {
+        while ([app pollEvent:&windowEvent]) {
+            if (windowEvent.type == RYEventTypePadAdded) {
                 if (!gamepad) {
-                    gamepad = new ryo::Gamepad(app, windowEvent.data.pad.id);
-                    if (!gamepad->valid()) {
-                        delete gamepad;
-                        gamepad = nullptr;
+                    gamepad = [RYGamepad newGamepadWithApplication:app id:windowEvent.data.pad.id];
+                    if (!gamepad.isValid) {
+                        [gamepad release];
+                        gamepad = nil;
                     }
                 }
-            } else if (windowEvent.type == ryo::EVENT_PAD_REMOVED) {
+            } else if (windowEvent.type == RYEventTypePadRemoved) {
                 if (gamepad) {
-                    delete gamepad;
-                    gamepad = nullptr;
+                    [gamepad release];
+                    gamepad = nil;
                 }
             }
 
-            if (windowEvent.type == ryo::EVENT_QUIT) {
+            if (windowEvent.type == RYEventTypeQuit) {
                 if (activeDemo) {
                     activeDemo->quit(ctx);
                     activeDemo = nullptr;
@@ -461,7 +474,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            if (windowEvent.type == ryo::EVENT_WINDOW_RESIZED) {
+            if (windowEvent.type == RYEventTypeWindowResized) {
                 unsigned int newWidth = windowEvent.data.window.width;
                 unsigned int newHeight = windowEvent.data.window.height;
 
@@ -469,7 +482,7 @@ int main(int argc, char* argv[]) {
                 // before UIKit has finished laying out the window. Query the
                 // window after the event so the menu and renderer use the same
                 // logical size as the actual view.
-                //window.size_get(newWidth, newHeight);
+                //[window getSize:&newWidth height:&newHeight];
 
                 if (newWidth != width || newHeight != height) {
                     width = newWidth;
@@ -490,15 +503,15 @@ int main(int argc, char* argv[]) {
             // the menu itself
             MenuGesture gesture = MENU_GESTURE_NONE;
             switch (windowEvent.type) {
-                case ryo::EVENT_TOUCH_BEGIN:
+                case RYEventTypeTouchBegin:
                     menu_touch_begin(menuTouch, windowEvent);
                     break;
 
-                case ryo::EVENT_TOUCH_MOVE:
+                case RYEventTypeTouchMove:
                     gesture = menu_touch_move(menuTouch, windowEvent);
                     break;
 
-                case ryo::EVENT_TOUCH_END:
+                case RYEventTypeTouchEnd:
                     gesture = menu_touch_end(menuTouch, windowEvent);
                     break;
 
@@ -532,9 +545,9 @@ int main(int argc, char* argv[]) {
 
             if (activeDemo != nullptr) {
                 bool shouldExitDemo = false;
-                if (windowEvent.type == ryo::EVENT_KEY_DOWN && windowEvent.data.key.code == ryo::KEY_ESCAPE) {
+                if (windowEvent.type == RYEventTypeKeyDown && windowEvent.data.key.code == RYKeyCodeEscape) {
                     shouldExitDemo = true;
-                } else if (windowEvent.type == ryo::EVENT_PAD_BUTTON_DOWN && windowEvent.data.pad.button == ryo::PAD_BUTTON_START) {
+                } else if (windowEvent.type == RYEventTypePadButtonDown && windowEvent.data.pad.button == RYGamepadButtonStart) {
                     shouldExitDemo = true;
                 }
 
@@ -546,24 +559,24 @@ int main(int argc, char* argv[]) {
                 }
             } else {
                 switch (windowEvent.type) {
-                    case ryo::EVENT_PAD_BUTTON_DOWN:
-                        if (!gamepad || !gamepad->valid())
+                    case RYEventTypePadButtonDown:
+                        if (!gamepad || !gamepad.isValid)
                             continue;
 
                         switch (windowEvent.data.pad.button) {
-                            case ryo::PAD_BUTTON_DPAD_DOWN:
+                            case RYGamepadButtonDpadDown:
                                 menu_move_down(menuState);
                                 break;
                             
-                            case ryo::PAD_BUTTON_DPAD_UP:
+                            case RYGamepadButtonDpadUp:
                                 menu_move_up(menuState);
                                 break;
                             
-                            case ryo::PAD_BUTTON_START:
+                            case RYGamepadButtonStart:
                                 running = false;
                                 break;
                             
-                            case ryo::PAD_BUTTON_DOWN:
+                            case RYGamepadButtonDown:
                                 enter_selected_demo();
                                 break;
                             
@@ -572,21 +585,21 @@ int main(int argc, char* argv[]) {
                         }
                         break;
                     
-                    case ryo::EVENT_KEY_DOWN:
+                    case RYEventTypeKeyDown:
                         switch (windowEvent.data.key.code) {
-                            case ryo::KEY_DOWN:
+                            case RYKeyCodeDown:
                                 menu_move_down(menuState);
                                 break;
                             
-                            case ryo::KEY_UP:
+                            case RYKeyCodeUp:
                                 menu_move_up(menuState);
                                 break;
                             
-                            case ryo::KEY_ESCAPE:
+                            case RYKeyCodeEscape:
                                 running = !quitSupported;
                                 break;
 
-                            case ryo::KEY_RETURN:
+                            case RYKeyCodeReturn:
                                 enter_selected_demo();
                                 break;
                             
@@ -629,11 +642,13 @@ int main(int argc, char* argv[]) {
     }
 
     if (gamepad)
-        delete gamepad;
+        [gamepad release];
 
     menu_destroy(menuState);
 
     [font release];
     [audioEngine release];
+    [window release];
+    [app release];
     return 0;
 }
