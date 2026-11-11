@@ -1,15 +1,15 @@
 #import "ryolib/image/RYImage.h"
-#include "ryolib/graphics.h"
+#import "ryolib/graphics.h"
 
 extern "C" void _ry_image_texture_category_anchor(void) {}
 
 @implementation RYImage (Texture)
 
-- (ryo::Texture *)createTextureWithRenderer:(const ryo::Renderer &)renderer {
+- (RYTexture *)createTextureWithRenderer:(RYRenderer *)renderer {
     return [self createTextureWithRenderer:renderer error:NULL];
 }
 
-- (ryo::Texture *)createTextureWithRenderer:(const ryo::Renderer &)renderer error:(RYError **)error {
+- (RYTexture *)createTextureWithRenderer:(RYRenderer *)renderer error:(RYError **)error {
     if (error) {
         *error = nil;
     }
@@ -19,17 +19,16 @@ extern "C" void _ry_image_texture_category_anchor(void) {}
             *error = [[RYError alloc] initWithCode:RYErrorCodeImageTextureCreationFailed
                                            message:"Cannot create texture: image has no valid pixel data"];
         }
-        return nullptr;
+        return nil;
     }
 
-    ryo::Texture *texture = new ryo::Texture(renderer, _pixels, _width, _height);
-    if (!texture || !texture->valid()) {
-        if (error) {
+    RYTexture *texture = [RYTexture newTextureWithRenderer:renderer pixels:_pixels width:(unsigned int)_width height:(unsigned int)_height error:error];
+    if (!texture) {
+        if (error && !*error) {
             *error = [[RYError alloc] initWithCode:RYErrorCodeImageTextureCreationFailed
                                            message:"Failed to initialize GPU texture"];
         }
-        delete texture;
-        return nullptr;
+        return nil;
     }
 
     return texture;

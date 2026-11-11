@@ -33,7 +33,7 @@
 
 struct MenuItem {
     std::string title;
-    ryo::Texture* texture = nullptr;
+    RYTexture *texture = nil;
     int textWidth = 0;
     int textHeight = 0;
 };
@@ -207,7 +207,7 @@ static void menu_layout_update(MenuState& menu, unsigned int screenHeight) {
         menu.scrollOffset = menu.selectedIndex - menu.visibleItemCount + 1;
 }
 
-static void menu_init(MenuState& menu, const ryo::Renderer& renderer, RYFont *font, const std::vector<std::string>& titles) {
+static void menu_init(MenuState& menu, RYRenderer *renderer, RYFont *font, const std::vector<std::string>& titles) {
     RYColor textColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
 
     for (const auto& title : titles) {
@@ -232,21 +232,21 @@ static void menu_init(MenuState& menu, const ryo::Renderer& renderer, RYFont *fo
 static void menu_destroy(MenuState& menu) {
     for (const auto& item : menu.items) {
         if (item.texture)
-            delete item.texture;
+            [item.texture release];
     }
     menu.items.clear();
 }
 
 static void menu_render(
-    const MenuState& menu, 
-    const ryo::Renderer& renderer, 
-    const ryo::Pipeline& textPipeline,
-    const ryo::DrawSettings& baseSettings,
+    const MenuState& menu,
+    RYRenderer *renderer,
+    RYPipeline *textPipeline,
+    const RYDrawSettings& baseSettings,
     float screenWidth,
     float screenHeight
 ) {
-    ryo::DrawSettings textSettings = baseSettings;
-    textSettings.pipelineOverride = &textPipeline;
+    RYDrawSettings textSettings = baseSettings;
+    textSettings.pipelineOverride = textPipeline;
 
     float startX = -screenWidth * 0.5f + 100.0f;
     float startY = screenHeight * 0.5f - MENU_TOP_MARGIN;
@@ -257,7 +257,7 @@ static void menu_render(
 
     for (int i = menu.scrollOffset; i < endIndex; ++i) {
         const auto& item = menu.items[i];
-        if (!item.texture || !item.texture->valid())
+        if (!item.texture)
             continue;
 
         float rowY = startY - (float)(i - menu.scrollOffset) * menu.itemHeight;
@@ -265,8 +265,8 @@ static void menu_render(
 
         if (isSelected) {
             ryo::Matrix4 barMatrix = ryo::Matrix4::translation(0.0f, rowY, 0.0f) * ryo::Matrix4::scaling(screenWidth, menu.itemHeight - 4.0f, 1.0f);
-            ryo::Color highlightColor = {0.980f, 0.392f, 0.392f, 1.0f};
-            renderer.draw_rect_color(highlightColor, barMatrix, &baseSettings);
+            RYColor highlightColor = RYColorMake(0.980f, 0.392f, 0.392f, 1.0f);
+            [renderer drawRectColor:highlightColor matrix:barMatrix settings:&baseSettings];
         }
 
         float textWidth = (float)item.textWidth * textScale;
@@ -274,8 +274,8 @@ static void menu_render(
 
         float textX = startX + textWidth * 0.5f + (isSelected ? 16.0f : 0.0f);
         ryo::Matrix4 textMatrix = ryo::Matrix4::translation(textX, rowY, 0.0f) * ryo::Matrix4::scaling(textWidth, textHeight, 1.0f);
-        ryo::Color tint = ryo::Color{1.0f, 1.0f, 1.0f, 1.0f};
-        renderer.draw_rect_texture(*item.texture, ryo::SAMPLER_TYPE_LINEAR, tint, textMatrix, &textSettings);
+        RYColor tint = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
+        [renderer drawRectTexture:item.texture samplerType:RYSamplerTypeLinear color:tint matrix:textMatrix settings:&textSettings];
     }
 }
 
@@ -318,21 +318,30 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    ryo::RendererConfig config = {};
+    RYRendererConfig config = {};
     config.nativeWindowHandle = window.nativeWindowHandle;
     config.width = width;
     config.height = height;
     config.contentScale = window.hidpiScale;
 
-    ryo::Renderer renderer(config);
-    if (!renderer.valid()) {
-        printf("Failed to create renderer: %s", ryo::error_get());
+    RYError *rendererError = nil;
+    RYRenderer *renderer = [RYRenderer newRendererWithConfig:&config error:&rendererError];
+    if (!renderer) {
+        printf("Failed to create renderer: %s\n", rendererError ? rendererError.message.UTF8String : "Unknown error");
+        [renderer release];
+        [audioEngine release];
+        [window release];
+        [app release];
         return 0;
     }
 
     unsigned int pixelWidth, pixelHeight;
-    if (!renderer.size_get(pixelWidth, pixelHeight)) {
-        printf("Failed to get renderer size: %s\n", ryo::error_get());
+    if (![renderer getSize:&pixelWidth height:&pixelHeight]) {
+        printf("Failed to get renderer size\n");
+        [renderer release];
+        [audioEngine release];
+        [window release];
+        [app release];
         return 0;
     }
 
@@ -340,8 +349,8 @@ int main(int argc, char* argv[]) {
     if (contentScale < 1.0f)
         contentScale = 1.0f;
 
-    ryo::Camera menuCamera = {};
-    menuCamera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+    RYCamera menuCamera = {};
+    menuCamera.projectionType = RYCameraProjectionTypeOrthographic;
     menuCamera.orthographicSize = height;
     menuCamera.nearPlane = -1.0f;
     menuCamera.farPlane = 1.0f;
@@ -349,27 +358,33 @@ int main(int argc, char* argv[]) {
     menuCamera.target = {0.0f, 0.0f, 0.0f};
     menuCamera.up = {0.0f, 1.0f, 0.0f};
     
-    ryo::DrawSettings menuDrawSettings = {};
-    menuDrawSettings.cullMode = ryo::CULL_MODE_BACK;
-    menuDrawSettings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
-    menuDrawSettings.fillMode = ryo::FILL_MODE_SOLID;
-    menuDrawSettings.depthMode = ryo::DEPTH_MODE_DISABLED;
+    RYDrawSettings menuDrawSettings = {};
+    menuDrawSettings.cullMode = RYCullModeBack;
+    menuDrawSettings.windingOrder = RYWindingOrderCounterClockwise;
+    menuDrawSettings.fillMode = RYFillModeSolid;
+    menuDrawSettings.depthMode = RYDepthModeDisabled;
     menuDrawSettings.camera = &menuCamera;
-    menuDrawSettings.pipelineOverride = nullptr;
-    menuDrawSettings.stencil = nullptr;
+    menuDrawSettings.pipelineOverride = nil;
+    menuDrawSettings.stencil = nil;
 
-    ryo::PipelineDesc texBlendDesc = {};
-    texBlendDesc.shader = ryo::BUILTIN_SHADER_TEXTURE;
-    texBlendDesc.blendMode = ryo::BLEND_MODE_ALPHA;
-    texBlendDesc.vertexLayout = ryo::VERTEX_LAYOUT_POSITION_UV;
+    RYPipelineDesc texBlendDesc = {};
+    texBlendDesc.shader = RYBuiltinShaderTexture;
+    texBlendDesc.blendMode = RYBlendModeAlpha;
+    texBlendDesc.vertexLayout = RYVertexLayoutTypePositionUV;
 
-    ryo::Pipeline texBlend(renderer, texBlendDesc);
-    if (!texBlend.valid()) {
-        printf("Failed to create texture blended pipeline: %s\n", ryo::error_get());
+    RYError *pipeError = nil;
+    RYPipeline *texBlend = [RYPipeline newPipelineWithRenderer:renderer desc:&texBlendDesc error:&pipeError];
+    if (!texBlend) {
+        printf("Failed to create texture blended pipeline: %s\n", pipeError ? pipeError.message.UTF8String : "Unknown error");
+        [texBlend release];
+        [renderer release];
+        [audioEngine release];
+        [window release];
+        [app release];
         return 0;
     }
 
-    ryo::Color blackColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    RYColor blackColor = RYColorMake(0.0f, 0.0f, 0.0f, 1.0f);
 
     RYError *fontError = nil;
     RYString *fontPath = [[RYString alloc] initWithUTF8String:"assets/lato-400-normal.ttf"];
@@ -377,6 +392,11 @@ int main(int argc, char* argv[]) {
     [fontPath release];
     if (!font) {
         printf("Failed to load font: %s\n", fontError ? fontError.message.UTF8String : "unknown");
+        [texBlend release];
+        [renderer release];
+        [audioEngine release];
+        [window release];
+        [app release];
         return 0;
     }
 
@@ -453,7 +473,7 @@ int main(int argc, char* argv[]) {
             if (windowEvent.type == RYEventTypePadAdded) {
                 if (!gamepad) {
                     gamepad = [RYGamepad newGamepadWithApplication:app id:windowEvent.data.pad.id];
-                    if (!gamepad.isValid) {
+                    if (!gamepad) {
                         [gamepad release];
                         gamepad = nil;
                     }
@@ -478,12 +498,6 @@ int main(int argc, char* argv[]) {
                 unsigned int newWidth = windowEvent.data.window.width;
                 unsigned int newHeight = windowEvent.data.window.height;
 
-                // During iPad rotation SDL can deliver the resize notification
-                // before UIKit has finished laying out the window. Query the
-                // window after the event so the menu and renderer use the same
-                // logical size as the actual view.
-                //[window getSize:&newWidth height:&newHeight];
-
                 if (newWidth != width || newHeight != height) {
                     width = newWidth;
                     height = newHeight;
@@ -493,8 +507,8 @@ int main(int argc, char* argv[]) {
                     menuCamera.orthographicSize = height;
                     menu_layout_update(menuState, height);
 
-                    if (!renderer.resize(width, height))
-                        printf("Failed to resize renderer: %s\n", ryo::error_get());
+                    if (![renderer resizeWithWidth:width height:height])
+                        printf("Failed to resize renderer\n");
                 }
             }
 
@@ -560,7 +574,7 @@ int main(int argc, char* argv[]) {
             } else {
                 switch (windowEvent.type) {
                     case RYEventTypePadButtonDown:
-                        if (!gamepad || !gamepad.isValid)
+                        if (!gamepad)
                             continue;
 
                         switch (windowEvent.data.pad.button) {
@@ -614,26 +628,24 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        float dt = renderer.frame_time_get();
+        float dt = [renderer frameTime];
 
-        // a single tap is only turned into the enter gesture once no other tap
-        // followed it within the cluster time
         menuTouch.time += dt;
         if (menu_touch_update(menuTouch) == MENU_GESTURE_ENTER)
             enter_selected_demo();
 
-        renderer.frame_begin();
+        [renderer frameBegin];
 
         if (activeDemo != nullptr) {
             activeDemo->update(ctx, dt);
             activeDemo->render(ctx);
         } else {
-            renderer.draw_pass_begin(nullptr, &blackColor);
+            [renderer drawPassBeginWithRenderTarget:nil clearColor:&blackColor];
             menu_render(menuState, renderer, texBlend, menuDrawSettings, width, height);
-            renderer.draw_pass_end();
+            [renderer drawPassEnd];
         }
 
-        renderer.frame_end();
+        [renderer frameEnd];
     }
 
     if (activeDemo != nullptr) {
@@ -645,6 +657,9 @@ int main(int argc, char* argv[]) {
         [gamepad release];
 
     menu_destroy(menuState);
+
+    [texBlend release];
+    [renderer release];
 
     [font release];
     [audioEngine release];

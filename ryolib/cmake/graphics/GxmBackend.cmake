@@ -2,7 +2,7 @@ function(setup_gxm_backend TARGET_NAME)
     include("${VITASDK}/share/vita.cmake")
 
     file(GLOB_RECURSE GXM_SOURCES CONFIGURE_DEPENDS
-        "src/backend/graphics/gxm/*.cpp"
+        "src/graphics/gxm/*.cpp"
     )
 
     target_sources(${TARGET_NAME} PRIVATE ${GXM_SOURCES})

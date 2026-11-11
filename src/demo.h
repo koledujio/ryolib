@@ -4,13 +4,13 @@
 
 struct DemoContext {
     RYWindow *window;
-    ryo::Renderer& renderer;
+    RYRenderer *renderer;
     RYAudioEngine *audioEngine;
     RYGamepad *&gamepad;
     unsigned int screenWidth;
     unsigned int screenHeight;
-    const ryo::DrawSettings& baseDrawSettings;
-    const ryo::Pipeline& textPipeline;
+    const RYDrawSettings& baseDrawSettings;
+    RYPipeline *textPipeline;
     RYFont *font;
 };
 

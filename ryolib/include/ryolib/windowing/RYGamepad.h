@@ -19,7 +19,6 @@
 }
 
 @property (nonatomic, readonly) RYApplication *application;
-@property (nonatomic, readonly) BOOL isValid;
 @property (nonatomic, readonly) int gamepadId;
 @property (nonatomic, readonly) RYString *name;
 @property (nonatomic, readonly) const char *nameUTF8;

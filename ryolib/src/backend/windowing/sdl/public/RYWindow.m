@@ -101,7 +101,7 @@
         return nil;
     }
 
-    if (!application || !application.isValid) {
+    if (!application || !application.internalApplication) {
         if (error) {
             *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidApplication message:"Invalid application instance provided for window creation"];
         }
@@ -216,14 +216,8 @@
     [super dealloc];
 }
 
-- (BOOL)isValid {
-    if (!_internal) return NO;
-    RYInternalWindow *intern = (RYInternalWindow *)_internal;
-    return intern->sdlWindow != NULL;
-}
-
 - (void *)nativeWindowHandle {
-    if (![self isValid]) return NULL;
+    if (!_internal) return NULL;
 
     const RYPlatformCapabilities *capabilities = ry_platform_get_capabilities();
     if (!capabilities->nativeWindowHandleSupported)
@@ -249,7 +243,7 @@
 }
 
 - (const char *)titleUTF8 {
-    if (![self isValid]) return NULL;
+    if (!_internal) return NULL;
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     return intern->title ? intern->title.UTF8String : NULL;
 }
@@ -259,7 +253,7 @@
 }
 
 - (BOOL)setTitleUTF8:(const char *)title error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -305,7 +299,7 @@
 }
 
 - (BOOL)getSize:(unsigned int *)outWidth height:(unsigned int *)outHeight {
-    if (![self isValid]) return NO;
+    if (!_internal) return NO;
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     int w = 0, h = 0;
     if (!SDL_GetWindowSize(intern->sdlWindow, &w, &h)) return NO;
@@ -319,7 +313,7 @@
 }
 
 - (BOOL)setSizeWithWidth:(unsigned int)width height:(unsigned int)height error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -354,7 +348,7 @@
 }
 
 - (BOOL)getMinSize:(unsigned int *)outWidth height:(unsigned int *)outHeight {
-    if (![self isValid]) return NO;
+    if (!_internal) return NO;
     if (ry_platform_get_capabilities()->sizeManagementType != RYSizeManagementTypeFreeResizable) return NO;
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     int w = 0, h = 0;
@@ -369,7 +363,7 @@
 }
 
 - (BOOL)setMinSizeWithWidth:(unsigned int)width height:(unsigned int)height error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -399,7 +393,7 @@
 }
 
 - (BOOL)getMaxSize:(unsigned int *)outWidth height:(unsigned int *)outHeight {
-    if (![self isValid]) return NO;
+    if (!_internal) return NO;
     if (ry_platform_get_capabilities()->sizeManagementType != RYSizeManagementTypeFreeResizable) return NO;
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     int w = 0, h = 0;
@@ -414,7 +408,7 @@
 }
 
 - (BOOL)setMaxSizeWithWidth:(unsigned int)width height:(unsigned int)height error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -440,13 +434,13 @@
 }
 
 - (float)hidpiScale {
-    if (![self isValid]) return 0.0f;
+    if (!_internal) return 0.0f;
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     return ry_platform_get_content_scale(intern->sdlWindow);
 }
 
 - (RYSafeAreaInsets)safeAreaInsets {
-    if (![self isValid]) return RYSafeAreaInsetsMake(0.0f, 0.0f, 0.0f, 0.0f);
+    if (!_internal) return RYSafeAreaInsetsMake(0.0f, 0.0f, 0.0f, 0.0f);
     RYInternalWindow *intern = (RYInternalWindow *)_internal;
     SDL_Rect safeArea;
     if (!SDL_GetWindowSafeArea(intern->sdlWindow, &safeArea)) {
@@ -471,7 +465,7 @@
 }
 
 - (BOOL)setFlags:(unsigned int)flags error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -516,7 +510,7 @@
 }
 
 - (BOOL)setAllowedOrientations:(unsigned int)orientations error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidWindow message:"Invalid window"];
         return NO;
     }
@@ -559,7 +553,7 @@
 }
 
 - (unsigned int)orientation {
-    if (![self isValid]) return RYDisplayOrientationNone;
+    if (!_internal) return RYDisplayOrientationNone;
     if (ry_platform_get_capabilities()->fixedDefaultOrientation) return RYDisplayOrientationNone;
 
     RYInternalWindow *intern = (RYInternalWindow *)_internal;

@@ -5,7 +5,6 @@
 
 @implementation RYApplication
 
-@synthesize isValid = _isValid;
 @synthesize capabilities = _capabilities;
 @synthesize internalApplication = _internal;
 
@@ -50,7 +49,6 @@
     }
     intern->dummy = 0;
     _internal = intern;
-    _isValid = YES;
     _capabilities = *ry_platform_get_capabilities();
 
     return self;
@@ -66,7 +64,7 @@
 }
 
 - (BOOL)pollEvent:(RYEvent *)event {
-    if (!_isValid || !_internal || !event) {
+    if (!_internal || !event) {
         return NO;
     }
 

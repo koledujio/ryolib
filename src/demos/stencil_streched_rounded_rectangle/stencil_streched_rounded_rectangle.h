@@ -10,7 +10,7 @@ public:
     }
 
     bool init(DemoContext& ctx) override {
-        m_camera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+        m_camera.projectionType = RYCameraProjectionTypeOrthographic;
         m_camera.orthographicSize = 720.0f;
         m_camera.nearPlane = -1.0f;
         m_camera.farPlane = 1.0f;
@@ -33,7 +33,7 @@ public:
         m_texture = [image createTextureWithRenderer:ctx.renderer error:&error];
         [image release];
 
-        if (m_texture == nullptr || !m_texture->valid()) {
+        if (m_texture == nil) {
             printf("Failed to create texture: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
@@ -42,55 +42,55 @@ public:
         m_matrix = ryo::Matrix4::scaling((float)m_width / (float)m_height * 720.0f, 720.0f, 1.0f);
         m_stencilMatrix = ryo::Matrix4::scaling(450.0f, 700.0f, 1.0f);
 
-        m_stencil = new ryo::Stencil(ctx.renderer);
-        if (m_stencil == nullptr || !m_stencil->valid()) {
-            printf("Failed to create stencil: %s\n", ryo::error_get());
+        m_stencil = [RYStencil newStencilWithRenderer:ctx.renderer error:&error];
+        if (!m_stencil) {
+            printf("Failed to create stencil: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
-        m_stencil->draw_rounded_rectangle(m_stencilMatrix, 0.2f, &m_camera);
+        [m_stencil drawRoundedRectangle:m_stencilMatrix radius:0.2f camera:&m_camera];
 
-        m_settings.cullMode = ryo::CULL_MODE_BACK;
-        m_settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
-        m_settings.fillMode = ryo::FILL_MODE_SOLID;
-        m_settings.depthMode = ryo::DEPTH_MODE_DISABLED;
+        m_settings.cullMode = RYCullModeBack;
+        m_settings.windingOrder = RYWindingOrderCounterClockwise;
+        m_settings.fillMode = RYFillModeSolid;
+        m_settings.depthMode = RYDepthModeDisabled;
         m_settings.camera = &m_camera;
-        m_settings.pipelineOverride = nullptr;
+        m_settings.pipelineOverride = nil;
         m_settings.stencil = m_stencil;
 
         return true;
     }
 
     void quit(DemoContext& ctx) override {
-        if (m_texture != nullptr) {
-            delete m_texture;
-            m_texture = nullptr;
+        if (m_texture != nil) {
+            [m_texture release];
+            m_texture = nil;
         }
 
-        if (m_stencil != nullptr) {
-            delete m_stencil;
-            m_stencil = nullptr;
+        if (m_stencil != nil) {
+            [m_stencil release];
+            m_stencil = nil;
         }
     }
 
     void render(DemoContext& ctx) override {
-        ryo::Color clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        ryo::Color imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        RYColor clearColor = RYColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+        RYColor imageColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
 
-        ctx.renderer.draw_pass_begin(nullptr, &clearColor);
+        [ctx.renderer drawPassBeginWithRenderTarget:nil clearColor:&clearColor];
 
-        ctx.renderer.draw_rect_texture(*m_texture, ryo::SAMPLER_TYPE_LINEAR, imageColor, m_matrix, &m_settings);
+        [ctx.renderer drawRectTexture:m_texture samplerType:RYSamplerTypeLinear color:imageColor matrix:m_matrix settings:&m_settings];
 
-        ctx.renderer.draw_pass_end();
+        [ctx.renderer drawPassEnd];
     }
 
 private:
-    ryo::Camera m_camera;
-    ryo::DrawSettings m_settings;
+    RYCamera m_camera;
+    RYDrawSettings m_settings;
     ryo::Matrix4 m_matrix;
     ryo::Matrix4 m_stencilMatrix;
-    int m_width, m_height;
-    ryo::Texture* m_texture;
-    ryo::Stencil* m_stencil;
+    int m_width = 0, m_height = 0;
+    RYTexture *m_texture = nil;
+    RYStencil *m_stencil = nil;
 };

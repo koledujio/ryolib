@@ -1,16 +1,17 @@
 #pragma once
 
-#include "../objc/RYObject.h"
-#include "../objc/RYArray.h"
+#import "../objc/RYObject.h"
+#import "../objc/RYArray.h"
+#import "../objc/RYColor.h"
 
 #include "../math.h"
-#include "../graphics.h"
+#import "../graphics.h"
 
 @class RYViewRoot;
 
 struct RYDrawContext {
-    ryo::Renderer& renderer;
-    const ryo::DrawSettings& settings;
+    RYRenderer *renderer;
+    const RYDrawSettings *settings;
 };
 
 @interface RYView : RYObject {
@@ -23,7 +24,7 @@ struct RYDrawContext {
     
     ryo::Vector2 _position;
     ryo::Vector2 _size;
-    ryo::Color _backgroundColor;
+    RYColor _backgroundColor;
 }
 
 @property (nonatomic, readonly) RYView *superview;
@@ -32,7 +33,7 @@ struct RYDrawContext {
 
 @property (nonatomic) ryo::Vector2 position;
 @property (nonatomic) ryo::Vector2 size;
-@property (nonatomic) ryo::Color backgroundColor;
+@property (nonatomic) RYColor backgroundColor;
 
 - (void)addSubview:(RYView *)view;
 - (void)removeFromSuperview;

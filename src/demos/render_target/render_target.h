@@ -10,18 +10,19 @@ public:
     }
 
     bool init(DemoContext& ctx) override {
-        ryo::PipelineDesc pipelineDesc = {};
-        pipelineDesc.shader = ryo::BUILTIN_SHADER_TEXTURE;
-        pipelineDesc.blendMode = ryo::BLEND_MODE_ALPHA;
-        pipelineDesc.vertexLayout = ryo::VERTEX_LAYOUT_POSITION_UV;
+        RYPipelineDesc pipelineDesc = {};
+        pipelineDesc.shader = RYBuiltinShaderTexture;
+        pipelineDesc.blendMode = RYBlendModeAlpha;
+        pipelineDesc.vertexLayout = RYVertexLayoutTypePositionUV;
 
-        m_pipeline = new ryo::Pipeline(ctx.renderer, pipelineDesc);
-        if (!m_pipeline->valid()) {
-            printf("Failed to create pipeline: %s\n", ryo::error_get());
+        RYError *pipeError = nil;
+        m_pipeline = [RYPipeline newPipelineWithRenderer:ctx.renderer desc:&pipelineDesc error:&pipeError];
+        if (!m_pipeline) {
+            printf("Failed to create pipeline: %s\n", pipeError ? pipeError.message.UTF8String : "unknown");
             return false;
         }
 
-        m_camera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+        m_camera.projectionType = RYCameraProjectionTypeOrthographic;
         m_camera.orthographicSize = 720.0f;
         m_camera.nearPlane = -1.0f;
         m_camera.farPlane = 1.0f;
@@ -29,13 +30,13 @@ public:
         m_camera.target = {0.0f, 0.0f, 0.0f};
         m_camera.up = {0.0f, 1.0f, 0.0f};
 
-        m_settings.cullMode = ryo::CULL_MODE_BACK;
-        m_settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
-        m_settings.fillMode = ryo::FILL_MODE_SOLID;
-        m_settings.depthMode = ryo::DEPTH_MODE_DISABLED;
+        m_settings.cullMode = RYCullModeBack;
+        m_settings.windingOrder = RYWindingOrderCounterClockwise;
+        m_settings.fillMode = RYFillModeSolid;
+        m_settings.depthMode = RYDepthModeDisabled;
         m_settings.camera = &m_camera;
         m_settings.pipelineOverride = m_pipeline;
-        m_settings.stencil = nullptr;
+        m_settings.stencil = nil;
 
         RYError *error = nil;
         RYString *fontPath = [[RYString alloc] initWithUTF8String:"assets/lato-400-normal.ttf"];
@@ -62,22 +63,22 @@ public:
         m_texture = [image createTextureWithRenderer:ctx.renderer error:&error];
         [image release];
 
-        if (m_texture == nullptr || !m_texture->valid()) {
+        if (m_texture == nil) {
             printf("Failed to create text texture: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
-        m_renderTarget = new ryo::RenderTarget(ctx.renderer, m_width, m_height);
-        if (!m_renderTarget->valid()) {
-            printf("Failed to create render target: %s\n", ryo::error_get());
+        m_renderTarget = [RYRenderTarget newRenderTargetWithRenderer:ctx.renderer width:m_width height:m_height error:&error];
+        if (!m_renderTarget) {
+            printf("Failed to create render target: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
         m_textDrawn = false;
 
-        m_renderTargetCamera.projectionType = ryo::CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+        m_renderTargetCamera.projectionType = RYCameraProjectionTypeOrthographic;
         m_renderTargetCamera.orthographicSize = m_height;
         m_renderTargetCamera.nearPlane = -1.0f;
         m_renderTargetCamera.farPlane = 1.0f;
@@ -85,31 +86,31 @@ public:
         m_renderTargetCamera.target = {0.0f, 0.0f, 0.0f};
         m_renderTargetCamera.up = {0.0f, 1.0f, 0.0f};
 
-        m_renderTargetSettings.cullMode = ryo::CULL_MODE_BACK;
-        m_renderTargetSettings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
-        m_renderTargetSettings.fillMode = ryo::FILL_MODE_SOLID;
-        m_renderTargetSettings.depthMode = ryo::DEPTH_MODE_DISABLED;
+        m_renderTargetSettings.cullMode = RYCullModeBack;
+        m_renderTargetSettings.windingOrder = RYWindingOrderCounterClockwise;
+        m_renderTargetSettings.fillMode = RYFillModeSolid;
+        m_renderTargetSettings.depthMode = RYDepthModeDisabled;
         m_renderTargetSettings.camera = &m_renderTargetCamera;
         m_renderTargetSettings.pipelineOverride = m_pipeline;
-        m_renderTargetSettings.stencil = nullptr;
+        m_renderTargetSettings.stencil = nil;
 
         return true;
     }
 
     void quit(DemoContext& ctx) override {
-        if (m_renderTarget != nullptr) {
-            delete m_renderTarget;
-            m_renderTarget = nullptr;
+        if (m_renderTarget != nil) {
+            [m_renderTarget release];
+            m_renderTarget = nil;
         }
 
-        if (m_texture != nullptr) {
-            delete m_texture;
-            m_texture = nullptr;
+        if (m_texture != nil) {
+            [m_texture release];
+            m_texture = nil;
         }
 
-        if (m_pipeline != nullptr) {
-            delete m_pipeline;
-            m_pipeline = nullptr;
+        if (m_pipeline != nil) {
+            [m_pipeline release];
+            m_pipeline = nil;
         }
 
         if (m_font != nil) {
@@ -119,33 +120,33 @@ public:
     }
 
     void render(DemoContext& ctx) override {
-        ryo::Color clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        ryo::Color imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        RYColor clearColor = RYColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+        RYColor imageColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
 
         ryo::Matrix4 matrix = ryo::Matrix4::scaling((float)m_width, (float)m_height, 1.0f);
 
-        ctx.renderer.draw_pass_begin(m_renderTarget, &clearColor);
+        [ctx.renderer drawPassBeginWithRenderTarget:m_renderTarget clearColor:&clearColor];
 
-        ctx.renderer.draw_rect_texture(*m_texture, ryo::SAMPLER_TYPE_LINEAR, imageColor, matrix, &m_renderTargetSettings);
+        [ctx.renderer drawRectTexture:m_texture samplerType:RYSamplerTypeLinear color:imageColor matrix:matrix settings:&m_renderTargetSettings];
 
-        ctx.renderer.draw_pass_end();
+        [ctx.renderer drawPassEnd];
 
-        ctx.renderer.draw_pass_begin(nullptr, &clearColor);
+        [ctx.renderer drawPassBeginWithRenderTarget:nil clearColor:&clearColor];
 
-        ctx.renderer.draw_rect_texture(*m_renderTarget->texture_color_get(), ryo::SAMPLER_TYPE_LINEAR, imageColor, matrix, &m_settings);
+        [ctx.renderer drawRectTexture:m_renderTarget.colorTexture samplerType:RYSamplerTypeLinear color:imageColor matrix:matrix settings:&m_settings];
 
-        ctx.renderer.draw_pass_end();
+        [ctx.renderer drawPassEnd];
     }
 
 private:
-    ryo::Pipeline* m_pipeline;
-    ryo::Camera m_camera;
-    ryo::DrawSettings m_settings;
-    ryo::Camera m_renderTargetCamera;
-    ryo::DrawSettings m_renderTargetSettings;
+    RYPipeline *m_pipeline = nil;
+    RYCamera m_camera;
+    RYDrawSettings m_settings;
+    RYCamera m_renderTargetCamera;
+    RYDrawSettings m_renderTargetSettings;
     RYFont* m_font = nil;
-    int m_width, m_height;
-    ryo::Texture* m_texture;
-    ryo::RenderTarget* m_renderTarget;
-    bool m_textDrawn;
+    int m_width = 0, m_height = 0;
+    RYTexture *m_texture = nil;
+    RYRenderTarget *m_renderTarget = nil;
+    bool m_textDrawn = false;
 };

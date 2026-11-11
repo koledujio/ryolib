@@ -2,7 +2,6 @@
 
 @implementation RYApplication
 
-@synthesize isValid = _isValid;
 @synthesize capabilities = _capabilities;
 @synthesize internalApplication = _internal;
 
@@ -28,11 +27,14 @@
 
 - (instancetype)initWithError:(RYError **)error {
     self = [super init];
-    if (self) {
-        _isValid = NO;
-        _internal = NULL;
+    if (!self) return nil;
+
+    if (error) {
+        *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingFeatureNotSupported
+                                       message:"Windowing backend is not available"];
     }
-    return self;
+    [self release];
+    return nil;
 }
 
 - (BOOL)pollEvent:(RYEvent *)event {

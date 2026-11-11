@@ -53,6 +53,18 @@ typedef enum {
     RYErrorCodeWindowingInvalidGamepad          = 506,
     RYErrorCodeWindowingFeatureNotSupported     = 507,
     RYErrorCodeWindowingInvalidSize             = 508,
+
+    RYErrorCodeGraphicsGeneralError             = 600,
+    RYErrorCodeGraphicsInitializationFailed     = 601,
+    RYErrorCodeGraphicsInvalidRenderer          = 602,
+    RYErrorCodeGraphicsTextureCreationFailed    = 603,
+    RYErrorCodeGraphicsBufferCreationFailed     = 604,
+    RYErrorCodeGraphicsPipelineCreationFailed   = 605,
+    RYErrorCodeGraphicsRenderTargetCreationFailed = 606,
+    RYErrorCodeGraphicsStencilCreationFailed    = 607,
+    RYErrorCodeGraphicsPassError                = 608,
+    RYErrorCodeGraphicsFeatureNotSupported      = 609,
+    RYErrorCodeGraphicsInvalidDimensions        = 610,
 } RYErrorCode;
 
 @interface RYError : RYObject {

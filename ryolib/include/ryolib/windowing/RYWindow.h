@@ -20,7 +20,6 @@
 }
 
 @property (nonatomic, readonly) RYApplication *application;
-@property (nonatomic, readonly) BOOL isValid;
 @property (nonatomic, readonly) RYWindowID windowId;
 @property (nonatomic, readonly) void *nativeWindowHandle;
 @property (nonatomic, readonly) void *internalWindow;

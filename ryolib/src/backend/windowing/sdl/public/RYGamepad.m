@@ -28,7 +28,7 @@
         return nil;
     }
 
-    if (!application || !application.isValid) {
+    if (!application || !application.internalApplication) {
         if (error) {
             *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidApplication message:"Invalid application instance provided for gamepad connection"];
         }
@@ -91,12 +91,6 @@
     [super dealloc];
 }
 
-- (BOOL)isValid {
-    if (!_internal) return NO;
-    RYInternalGamepad *intern = (RYInternalGamepad *)_internal;
-    return intern->sdlGamepad != NULL;
-}
-
 - (const char *)nameUTF8 {
     return _name ? _name.UTF8String : "Unknown Gamepad";
 }
@@ -111,7 +105,7 @@
                     highFrequency:(uint16_t)highFreq
                          duration:(uint32_t)durationMs
                             error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidGamepad message:"Invalid gamepad"];
         return NO;
     }
@@ -135,7 +129,7 @@
                           rightTrigger:(uint16_t)rightTrigger
                               duration:(uint32_t)durationMs
                                  error:(RYError **)error {
-    if (![self isValid]) {
+    if (!_internal) {
         if (error) *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingInvalidGamepad message:"Invalid gamepad"];
         return NO;
     }

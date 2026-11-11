@@ -14,15 +14,15 @@ public:
     }
 
     void render(DemoContext& ctx) override {
-        ryo::Color clearColor = {
+        RYColor clearColor = RYColorMake(
             0.5f + 0.5f * sinf(m_time),
             0.5f + 0.5f * sinf(m_time + 2.094f),
             0.5f + 0.5f * sinf(m_time + 4.188f),
             1.0f
-        };
+        );
 
-        ctx.renderer.draw_pass_begin(nullptr, &clearColor);
-        ctx.renderer.draw_pass_end();
+        [ctx.renderer drawPassBeginWithRenderTarget:nil clearColor:&clearColor];
+        [ctx.renderer drawPassEnd];
     }
 
 private:

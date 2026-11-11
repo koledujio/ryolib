@@ -51,10 +51,14 @@
                 allowedOrientations:(unsigned int)allowedOrientations
                               error:(RYError **)error {
     self = [super init];
-    if (self) {
-        _internal = NULL;
+    if (!self) return nil;
+
+    if (error) {
+        *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingFeatureNotSupported
+                                       message:"Windowing backend is not available"];
     }
-    return self;
+    [self release];
+    return nil;
 }
 
 - (instancetype)initWithApplication:(RYApplication *)application
@@ -65,13 +69,16 @@
                 allowedOrientations:(unsigned int)allowedOrientations
                               error:(RYError **)error {
     self = [super init];
-    if (self) {
-        _internal = NULL;
+    if (!self) return nil;
+
+    if (error) {
+        *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingFeatureNotSupported
+                                       message:"Windowing backend is not available"];
     }
-    return self;
+    [self release];
+    return nil;
 }
 
-- (BOOL)isValid { return NO; }
 - (void *)nativeWindowHandle { return NULL; }
 - (const char *)titleUTF8 { return NULL; }
 - (BOOL)setTitleUTF8:(const char *)title { return NO; }

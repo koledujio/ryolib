@@ -18,6 +18,15 @@ set(RYOLIB_CORE_SOURCES
     src/ui/RYView.mm
     src/ui/RYViewRoot.mm
 
+    src/graphics/RYGraphicsBackend.mm
+    src/graphics/RYRenderer.mm
+    src/graphics/RYTexture.mm
+    src/graphics/RYBuffer.mm
+    src/graphics/RYPipeline.mm
+    src/graphics/RYRenderTarget.mm
+    src/graphics/RYStencil.mm
+    src/graphics/stub/RYStubGraphicsBackend.mm
+
     src/audio/AudioEngine.m
     src/audio/Sound.m
     src/audio/AudioBackend.m

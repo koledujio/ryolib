@@ -10,7 +10,7 @@ using namespace ryo;
 @synthesize logicalSize = _logicalSize;
 @synthesize backgroundColor = _backgroundColor;
 
-- (instancetype)initWithRenderer:(Renderer *)renderer
+- (instancetype)initWithRenderer:(RYRenderer *)renderer
               physicalResolution:(Vector2)resolution
                     contentScale:(float)contentScale
                      contentView:(RYView *)contentView {
@@ -19,7 +19,6 @@ using namespace ryo;
         return nil;
     
     if (!renderer ||
-        !renderer->valid() ||
         resolution.x <= 0 ||
         resolution.y <= 0 ||
         contentScale <= 0) {
@@ -27,8 +26,8 @@ using namespace ryo;
         return nil;
     }
 
-    _renderer = renderer;
-    _renderTarget = nullptr;
+    _renderer = [renderer retain];
+    _renderTarget = nil;
 
     _physicalResolution = resolution;
     _contentScale = contentScale;
@@ -39,12 +38,11 @@ using namespace ryo;
         resolution.y / contentScale
     };
 
-    _backgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    _backgroundColor = RYColorMake(0.0f, 0.0f, 0.0f, 1.0f);
 
-    RenderTarget* renderTarget = new RenderTarget(*renderer, resolution.x, resolution.y);
+    RYRenderTarget *renderTarget = [RYRenderTarget newRenderTargetWithRenderer:renderer width:(unsigned int)resolution.x height:(unsigned int)resolution.y];
 
-    if (!renderTarget->valid()) {
-        delete renderTarget;
+    if (!renderTarget) {
         [self release];
         return nil;
     }
@@ -62,14 +60,18 @@ using namespace ryo;
         _contentView = nil;
     }
 
-    if (_renderTarget != nullptr) {
-        delete _renderTarget;
-        _renderTarget = nullptr;
+    if (_renderTarget) {
+        [_renderTarget release];
+        _renderTarget = nil;
+    }
+
+    if (_renderer) {
+        [_renderer release];
+        _renderer = nil;
     }
 
     [super dealloc];
 }
-
 
 - (void)setContentView:(RYView *)contentView {
     if (_contentView == contentView)
@@ -103,14 +105,13 @@ using namespace ryo;
         _contentScale == contentScale)
         return;
 
-    RenderTarget *newTarget = new RenderTarget(*_renderer, physicalResolution.x, physicalResolution.y);
+    RYRenderTarget *newTarget = [RYRenderTarget newRenderTargetWithRenderer:_renderer width:(unsigned int)physicalResolution.x height:(unsigned int)physicalResolution.y];
 
-    if (!newTarget->valid()) {
-        delete newTarget;
+    if (!newTarget) {
         return;
     }
     
-    delete _renderTarget; // must be valid because it's guaranteed to be created at least once by init and if a size update fails it remains valid by not changing
+    [_renderTarget release];
     _renderTarget = newTarget;
 
     _physicalResolution = physicalResolution;
@@ -135,38 +136,38 @@ using namespace ryo;
     [_contentView layout:Matrix4()];
 }
 
-- (const Texture *)draw {
-    Camera camera = {};
+- (RYTexture *)draw {
+    RYCamera camera = {};
     camera.position = {0.0f, 0.0f, 1.0f};
     camera.target = {0.0f, 0.0f, 0.0f};
     camera.up = {0.0f, 1.0f, 0.0f};
-    camera.projectionType = CAMERA_PROJECTION_TYPE_ORTHOGRAPHIC;
+    camera.projectionType = RYCameraProjectionTypeOrthographic;
     camera.orthographicSize = _logicalSize.y;
     camera.nearPlane = -1.0f;
     camera.farPlane = 1.0f;
 
-    DrawSettings settings = {};
-    settings.cullMode = CULL_MODE_BACK;
-    settings.windingOrder = WINDING_ORDER_COUNTER_CLOCKWISE;
-    settings.fillMode = FILL_MODE_SOLID;
-    settings.depthMode = DEPTH_MODE_DISABLED;
+    RYDrawSettings settings = {};
+    settings.cullMode = RYCullModeBack;
+    settings.windingOrder = RYWindingOrderCounterClockwise;
+    settings.fillMode = RYFillModeSolid;
+    settings.depthMode = RYDepthModeDisabled;
     settings.camera = &camera;
-    settings.pipelineOverride = nullptr;
-    settings.stencil = nullptr;
+    settings.pipelineOverride = nil;
+    settings.stencil = nil;
 
-    RYDrawContext context{*_renderer, settings};
+    RYDrawContext context{_renderer, &settings};
 
     if (_contentView)
-        [_contentView preDraw:context]; // for drawing outside of a draw pass, required if a view wants it's own render target that's then drawn in draw
+        [_contentView preDraw:context];
     
-    _renderer->draw_pass_begin(_renderTarget, &_backgroundColor);
+    [_renderer drawPassBeginWithRenderTarget:_renderTarget clearColor:&_backgroundColor];
 
     if (_contentView)
         [_contentView draw:context];
 
-    _renderer->draw_pass_end();
+    [_renderer drawPassEnd];
 
-    return _renderTarget->texture_color_get();
+    return _renderTarget.colorTexture;
 }
 
 @end

@@ -18,15 +18,16 @@
 
 - (instancetype)initWithApplication:(RYApplication *)application id:(int)gamepadId error:(RYError **)error {
     self = [super init];
-    if (self) {
-        _internal = NULL;
-        _gamepadId = -1;
-        _type = RYGamepadTypeUnknown;
+    if (!self) return nil;
+
+    if (error) {
+        *error = [[RYError alloc] initWithCode:RYErrorCodeWindowingFeatureNotSupported
+                                       message:"Windowing backend is not available"];
     }
-    return self;
+    [self release];
+    return nil;
 }
 
-- (BOOL)isValid { return NO; }
 - (const char *)nameUTF8 { return NULL; }
 
 - (BOOL)setRumbleWithLowFrequency:(uint16_t)lowFreq highFrequency:(uint16_t)highFreq duration:(uint32_t)durationMs { return NO; }

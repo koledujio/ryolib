@@ -10,7 +10,7 @@ public:
     }
 
     bool init(DemoContext& ctx) override {
-        m_camera.projectionType = ryo::CAMERA_PROJECTION_TYPE_PERSPECTIVE;
+        m_camera.projectionType = RYCameraProjectionTypePerspective;
         m_camera.fovY = 60.0f;
         m_camera.nearPlane = 0.1f;
         m_camera.farPlane = 100.0f;
@@ -18,13 +18,13 @@ public:
         m_camera.target = {0.0f, 0.0f, 0.0f};
         m_camera.up = {0.0f, 1.0f, 0.0f};
 
-        m_settings.cullMode = ryo::CULL_MODE_BACK;
-        m_settings.windingOrder = ryo::WINDING_ORDER_COUNTER_CLOCKWISE;
-        m_settings.fillMode = ryo::FILL_MODE_SOLID;
-        m_settings.depthMode = ryo::DEPTH_MODE_READ_WRITE;
+        m_settings.cullMode = RYCullModeBack;
+        m_settings.windingOrder = RYWindingOrderCounterClockwise;
+        m_settings.fillMode = RYFillModeSolid;
+        m_settings.depthMode = RYDepthModeReadWrite;
         m_settings.camera = &m_camera;
-        m_settings.pipelineOverride = nullptr;
-        m_settings.stencil = nullptr;
+        m_settings.pipelineOverride = nil;
+        m_settings.stencil = nil;
 
         uint8_t checkerboardPixels[16] = {
             255, 255, 255, 255,
@@ -36,16 +36,17 @@ public:
         m_width = 2;
         m_height = 2;
 
-        m_texture = new ryo::Texture(ctx.renderer, checkerboardPixels, m_width, m_height);
-        if (!m_texture->valid()) {
-            printf("Failed to load texture: %s\n", ryo::error_get());
+        RYError *error = nil;
+        m_texture = [RYTexture newTextureWithRenderer:ctx.renderer pixels:checkerboardPixels width:m_width height:m_height error:&error];
+        if (!m_texture) {
+            printf("Failed to load texture: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
         m_matrix = ryo::Matrix4::scaling((float)m_width / (float)m_height * 720.0f, 720.0f, 1.0f);
 
-        ryo::PositionUVVertex cubeVertices[] = {
+        RYPositionUVVertex cubeVertices[] = {
             { {-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f} },
             { {0.5f, -0.5f, 0.5f}, {1.0f, 1.0f} },
             { {0.5f, 0.5f, 0.5f}, {1.0f, 0.0f} },
@@ -66,16 +67,16 @@ public:
             4, 5, 1,  1, 0, 4
         };
 
-        m_vertexBuffer = new ryo::Buffer(ctx.renderer, cubeVertices, sizeof(ryo::PositionUVVertex) * 8, ryo::BUFFER_TYPE_VERTEX);
-        if (m_vertexBuffer == nullptr || !m_vertexBuffer->valid()) {
-            printf("Failed to create vertex buffer: %s\n", ryo::error_get());
+        m_vertexBuffer = [RYBuffer newBufferWithRenderer:ctx.renderer data:cubeVertices size:sizeof(RYPositionUVVertex) * 8 type:RYBufferTypeVertex error:&error];
+        if (!m_vertexBuffer) {
+            printf("Failed to create vertex buffer: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
 
-        m_indexBuffer = new ryo::Buffer(ctx.renderer, cubeIndices, sizeof(uint32_t) * 36, ryo::BUFFER_TYPE_INDEX);
-        if (m_indexBuffer == nullptr || !m_indexBuffer->valid()) {
-            printf("Failed to create index buffer: %s\n", ryo::error_get());
+        m_indexBuffer = [RYBuffer newBufferWithRenderer:ctx.renderer data:cubeIndices size:sizeof(uint32_t) * 36 type:RYBufferTypeIndex error:&error];
+        if (!m_indexBuffer) {
+            printf("Failed to create index buffer: %s\n", error ? error.message.UTF8String : "unknown");
             quit(ctx);
             return false;
         }
@@ -84,19 +85,19 @@ public:
     }
 
     void quit(DemoContext& ctx) override {
-        if (m_texture != nullptr) {
-            delete m_texture;
-            m_texture = nullptr;
+        if (m_texture != nil) {
+            [m_texture release];
+            m_texture = nil;
         }
 
-        if (m_vertexBuffer != nullptr) {
-            delete m_vertexBuffer;
-            m_vertexBuffer = nullptr;
+        if (m_vertexBuffer != nil) {
+            [m_vertexBuffer release];
+            m_vertexBuffer = nil;
         }
 
-        if (m_indexBuffer != nullptr) {
-            delete m_indexBuffer;
-            m_indexBuffer = nullptr;
+        if (m_indexBuffer != nil) {
+            [m_indexBuffer release];
+            m_indexBuffer = nil;
         }
     }
 
@@ -105,28 +106,28 @@ public:
     }
 
     void render(DemoContext& ctx) override {
-        ryo::Color clearColor = {0.15f, 0.15f, 0.15f, 1.0f};
-        ryo::Color textureColor1 = {1.0f, 0.0f, 0.0f, 1.0f};
-        ryo::Color textureColor2 = {0.0f, 0.0f, 1.0f, 1.0f};
+        RYColor clearColor = RYColorMake(0.15f, 0.15f, 0.15f, 1.0f);
+        RYColor textureColor1 = RYColorMake(1.0f, 0.0f, 0.0f, 1.0f);
+        RYColor textureColor2 = RYColorMake(0.0f, 0.0f, 1.0f, 1.0f);
 
         ryo::Matrix4 model1 = ryo::Matrix4::translation(sin(m_time) * 2.0f, 0.0f, cos(m_time) * 2.0f) * ryo::Matrix4::rotation(0.0f, m_time, 0.0f);
         ryo::Matrix4 model2 = ryo::Matrix4::translation(-sin(m_time) * 2.0f, 0.0f, -cos(m_time) * 2.0f) * ryo::Matrix4::rotation(0.0f, m_time, 0.0f);
 
-        ctx.renderer.draw_pass_begin(nullptr, &clearColor);
+        [ctx.renderer drawPassBeginWithRenderTarget:nil clearColor:&clearColor];
 
-        ctx.renderer.draw_mesh_texture(*m_vertexBuffer, *m_indexBuffer, 36, *m_texture, ryo::SAMPLER_TYPE_NEAREST, textureColor1, model1, &m_settings);
-        ctx.renderer.draw_mesh_texture(*m_vertexBuffer, *m_indexBuffer, 36, *m_texture, ryo::SAMPLER_TYPE_NEAREST, textureColor2, model2, &m_settings);
+        [ctx.renderer drawMeshTextureWithVertexBuffer:m_vertexBuffer indexBuffer:m_indexBuffer indexCount:36 texture:m_texture samplerType:RYSamplerTypeNearest color:textureColor1 matrix:model1 settings:&m_settings];
+        [ctx.renderer drawMeshTextureWithVertexBuffer:m_vertexBuffer indexBuffer:m_indexBuffer indexCount:36 texture:m_texture samplerType:RYSamplerTypeNearest color:textureColor2 matrix:model2 settings:&m_settings];
 
-        ctx.renderer.draw_pass_end();
+        [ctx.renderer drawPassEnd];
     }
 
 private:
     float m_time = 0.0f;
-    ryo::Camera m_camera;
-    ryo::DrawSettings m_settings;
+    RYCamera m_camera;
+    RYDrawSettings m_settings;
     ryo::Matrix4 m_matrix;
-    int m_width, m_height;
-    ryo::Texture* m_texture;
-    ryo::Buffer* m_vertexBuffer;
-    ryo::Buffer* m_indexBuffer;
+    int m_width = 0, m_height = 0;
+    RYTexture *m_texture = nil;
+    RYBuffer *m_vertexBuffer = nil;
+    RYBuffer *m_indexBuffer = nil;
 };

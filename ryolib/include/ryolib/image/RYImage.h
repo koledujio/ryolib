@@ -98,11 +98,8 @@ typedef enum {
 
 @end
 
-#if defined(__cplusplus)
-namespace ryo {
-    struct Renderer;
-    struct Texture;
-}
+@class RYRenderer;
+@class RYTexture;
 
 /**
  * @brief Category bridging RYImage with the graphics renderer for texture creation.
@@ -113,18 +110,17 @@ namespace ryo {
  * Creates a GPU texture from this image's pixel data.
  * 
  * @param renderer The renderer to create the GPU texture on.
- * @return A new ryo::Texture instance, or nullptr on failure.
+ * @return A new RYTexture instance owned by the caller, or nil on failure.
  */
-- (ryo::Texture *)createTextureWithRenderer:(const ryo::Renderer &)renderer;
+- (RYTexture *)createTextureWithRenderer:(RYRenderer *)renderer;
 
 /**
  * Creates a GPU texture from this image's pixel data, reporting errors.
  * 
  * @param renderer The renderer to create the GPU texture on.
  * @param error Out parameter for error reporting.
- * @return A new ryo::Texture instance, or nullptr on failure.
+ * @return A new RYTexture instance owned by the caller, or nil on failure.
  */
-- (ryo::Texture *)createTextureWithRenderer:(const ryo::Renderer &)renderer error:(RYError **)error;
+- (RYTexture *)createTextureWithRenderer:(RYRenderer *)renderer error:(RYError **)error;
 
 @end
-#endif

@@ -22,7 +22,7 @@ using namespace ryo;
 
         _position = {0.0f, 0.0f};
         _size = {100.0f, 100.0f};
-        _backgroundColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        _backgroundColor = RYColorMake(1.0f, 1.0f, 1.0f, 1.0f);
     }
     return self;
 }
@@ -84,7 +84,7 @@ using namespace ryo;
 }
 
 - (void)draw:(RYDrawContext &)context {
-    context.renderer.draw_rect_color(_backgroundColor, _matrix, &context.settings);
+    [context.renderer drawRectColor:_backgroundColor matrix:_matrix settings:context.settings];
 
     for (unsigned long i = 0; i < _subviews.count; i++) {
         RYView *view = (RYView *)[_subviews objectAtIndex:i];

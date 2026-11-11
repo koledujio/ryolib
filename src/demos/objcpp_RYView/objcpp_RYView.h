@@ -18,7 +18,7 @@ private:
     void *m_viewRoot = nullptr;
     void *m_view = nullptr;
 #endif
-    ryo::Camera m_camera;
-    ryo::DrawSettings m_settings;
+    RYCamera m_camera;
+    RYDrawSettings m_settings;
     ryo::Matrix4 m_matrix;
 };
