@@ -1,9 +1,13 @@
 function(setup_miniaudio_backend TARGET_NAME)
-    target_compile_definitions(${TARGET_NAME} PUBLIC RYO_ENABLE_AUDIO_MINIAUDIO=1)
+    file(GLOB_RECURSE MINIAUDIO_SOURCES CONFIGURE_DEPENDS
+        "src/backend/audio/miniaudio/*.cpp"
+    )
+
+    target_sources(${TARGET_NAME} PRIVATE ${MINIAUDIO_SOURCES})
 
     if(APPLE)
-        set_source_files_properties("src/audio/miniaudio/MiniaudioImplementation.c"
-            PROPERTIES COMPILE_OPTIONS "-xobjective-c"
+        set_source_files_properties("src/backend/audio/miniaudio/vendor/miniaudio_impl.cpp"
+            PROPERTIES COMPILE_OPTIONS "-xobjective-c++"
         )
         find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
         find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)

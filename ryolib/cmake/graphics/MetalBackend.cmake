@@ -1,17 +1,9 @@
 function(setup_metal_backend TARGET_NAME)
     file(GLOB_RECURSE METAL_SOURCES CONFIGURE_DEPENDS
-        "src/graphics/metal/*.mm"
+        "src/backend/graphics/metal/*.mm"
     )
 
     target_sources(${TARGET_NAME} PRIVATE ${METAL_SOURCES})
-
-    file(GLOB_RECURSE METAL_OBJC_SOURCES CONFIGURE_DEPENDS
-        "src/graphics/metal/*.m"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${METAL_OBJC_SOURCES})
-
-    target_compile_definitions(${TARGET_NAME} PRIVATE RYO_ENABLE_GRAPHICS_METAL=1)
 
     find_library(METAL_FRAMEWORK Metal REQUIRED)
     find_library(QUARTZ_FRAMEWORK QuartzCore REQUIRED)

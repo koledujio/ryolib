@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
-project(GfxLibraryTest C CXX OBJC OBJCXX)
+project(GfxLibraryTest C CXX)
+
+if(APPLE)
+    enable_language(OBJC OBJCXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
-
-set(CMAKE_OBJCXX_STANDARD 17)
-set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
-set(CMAKE_OBJCXX_EXTENSIONS ON)
 
 set(VITA_APP_NAME "Ryolib UI Test")
 set(VITA_TITLEID "KOLE00001")
@@ -27,12 +27,7 @@ endif()
 
 add_subdirectory(ryolib)
 
-add_executable(TestApp
-    src/main.mm
-
-    src/demos/objcpp_RYViewRoot/implementation.mm
-    src/demos/objcpp_RYView/implementation.mm
-)
+add_executable(TestApp src/main.cpp)
 
 target_link_libraries(TestApp PRIVATE ryolib)
 
@@ -54,48 +49,7 @@ elseif(WIN32)
         set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE TRUE)
     endif()
 
-    # choosing -static or ld here will use libobjc.a instead of libobjc.dll.a, crashing on startup
-    target_link_options(TestApp PRIVATE -static-libgcc -static-libstdc++)
-
-    # copy required runtime DLLs for the Objective-C runtime
-    execute_process(
-        COMMAND ${CMAKE_OBJC_COMPILER} -print-file-name=libobjc-4.dll
-        OUTPUT_VARIABLE RYO_OBJC_RUNTIME_DLL
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    set(RYO_RUNTIME_DLLS "")
-    if(EXISTS "${RYO_OBJC_RUNTIME_DLL}")
-        list(APPEND RYO_RUNTIME_DLLS "${RYO_OBJC_RUNTIME_DLL}")
-        get_filename_component(RYO_MINGW_LIB_DIR "${RYO_OBJC_RUNTIME_DLL}" DIRECTORY)
-
-        find_file(RYO_WINPTHREAD_RUNTIME_DLL
-            NAMES libwinpthread-1.dll
-            PATHS
-                "${RYO_MINGW_LIB_DIR}/../bin"
-                "${RYO_MINGW_LIB_DIR}"
-                "${CMAKE_SYSROOT}/bin"
-                "${CMAKE_SYSROOT}/x86_64-w64-mingw32/bin"
-            NO_DEFAULT_PATH
-        )
-        if(RYO_WINPTHREAD_RUNTIME_DLL)
-            list(APPEND RYO_RUNTIME_DLLS "${RYO_WINPTHREAD_RUNTIME_DLL}")
-        endif()
-
-        file(GLOB RYO_GCC_RUNTIME_DLLS "${RYO_MINGW_LIB_DIR}/libgcc_s_*.dll")
-        foreach(GCC_DLL ${RYO_GCC_RUNTIME_DLLS})
-            list(APPEND RYO_RUNTIME_DLLS "${GCC_DLL}")
-        endforeach()
-    endif()
-
-    if(RYO_RUNTIME_DLLS)
-        add_custom_command(TARGET TestApp POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${RYO_RUNTIME_DLLS}
-                "$<TARGET_FILE_DIR:TestApp>"
-            COMMENT "Copying MinGW runtime DLLs next to TestApp..."
-        )
-    endif()
+    target_link_options(TestApp PRIVATE -static -static-libgcc -static-libstdc++)
 elseif(VITA)
     include("${VITASDK}/share/vita.cmake")
 

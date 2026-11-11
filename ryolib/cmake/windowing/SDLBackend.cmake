@@ -1,27 +1,17 @@
 function(setup_sdl_backend TARGET_NAME)
-    file(GLOB_RECURSE SDL_OBJC_SOURCES CONFIGURE_DEPENDS
-        "src/backend/windowing/sdl/*.m"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJC_SOURCES})
-
-    file(GLOB_RECURSE SDL_OBJCXX_SOURCES CONFIGURE_DEPENDS
-        "src/backend/windowing/sdl/*.mm"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJCXX_SOURCES})
-
-    file(GLOB_RECURSE SDL_C_SOURCES CONFIGURE_DEPENDS
-        "src/backend/windowing/sdl/*.c"
-    )
-
-    target_sources(${TARGET_NAME} PRIVATE ${SDL_C_SOURCES})
-
     file(GLOB_RECURSE SDL_SOURCES CONFIGURE_DEPENDS
         "src/backend/windowing/sdl/*.cpp"
     )
 
     target_sources(${TARGET_NAME} PRIVATE ${SDL_SOURCES})
+
+    if(APPLE)
+        file(GLOB_RECURSE SDL_OBJCXX_SOURCES CONFIGURE_DEPENDS
+            "src/backend/windowing/sdl/*.mm"
+        )
+
+        target_sources(${TARGET_NAME} PRIVATE ${SDL_OBJCXX_SOURCES})
+    endif()
 
     include(FetchContent)
 

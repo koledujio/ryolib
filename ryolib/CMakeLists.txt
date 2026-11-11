@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ryolib C CXX OBJC OBJCXX)
+project(ryolib C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -9,50 +9,9 @@ set(RYOLIB_CORE_SOURCES
     src/math/vector2.cpp
 
     src/debug/error/error.cpp
-
-    src/objc/RYArray.m
-    src/objc/RYError.m
-    src/objc/RYObject.m
-    src/objc/RYString.m
-
-    src/ui/RYView.mm
-    src/ui/RYViewRoot.mm
-
-    src/graphics/RYGraphicsBackend.mm
-    src/graphics/RYRenderer.mm
-    src/graphics/RYTexture.mm
-    src/graphics/RYBuffer.mm
-    src/graphics/RYPipeline.mm
-    src/graphics/RYRenderTarget.mm
-    src/graphics/RYStencil.mm
-    src/graphics/stub/RYStubGraphicsBackend.mm
-
-    src/audio/AudioEngine.m
-    src/audio/Sound.m
-    src/audio/AudioBackend.m
-    src/audio/miniaudio/MiniaudioImplementation.c
-    src/audio/miniaudio/AudioBackendMiniaudio.m
-    src/audio/sdl/AudioBackendSDL.m
-    src/audio/stub/AudioBackendStub.m
-
-    src/image/RYImage.m
-    src/image/RYImageBackend.m
-    src/image/RYImageTexture.mm
-    src/image/stb/stb_impl.c
-    src/image/stb/ImageBackendStb.m
-    src/image/stub/ImageBackendStub.m
-
-    src/text/RYFont.m
-    src/text/RYTextBackend.m
-    src/text/sdl_ttf/TextBackendSDL.m
-    src/text/stub/TextBackendStub.m
 )
 
 add_library(ryolib STATIC ${RYOLIB_CORE_SOURCES})
-
-if(NOT APPLE)
-    target_link_libraries(ryolib PRIVATE objc)
-endif()
 
 target_include_directories(ryolib PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -69,10 +28,7 @@ if (RYO_SAFETY)
     target_compile_definitions(ryolib PRIVATE RYO_SAFETY)
 endif()
 
-if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_definitions(ryolib PUBLIC RYO_APPLE=1)
-    target_link_options(ryolib INTERFACE "-ObjC")
-
+if(APPLE)
     if(IOS)
         target_compile_definitions(ryolib PUBLIC RYO_APPLE_IOS=1)
     else()
@@ -85,23 +41,14 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     include(windowing/SDLBackend)
     setup_sdl_backend(ryolib)
 
-    # Text drawing backends
-
     include(text/SDLBackend)
     setup_sdl_ttf_backend(ryolib)
-
-    # Image decoding backends
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
 
-    # Audio backends
-
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
-
-    include(audio/SDLMixerBackend)
-    setup_sdl_mixer_backend(ryolib)
 elseif(WIN32)
     target_compile_definitions(ryolib PUBLIC RYO_WIN32=1)
 
@@ -111,23 +58,14 @@ elseif(WIN32)
     include(windowing/SDLBackend)
     setup_sdl_backend(ryolib)
 
-    # Text drawing backends
-
     include(text/SDLBackend)
     setup_sdl_ttf_backend(ryolib)
-
-    # Image decoding backends
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
 
-    # Audio backends
-
     include(audio/MiniaudioBackend)
     setup_miniaudio_backend(ryolib)
-
-    include(audio/SDLMixerBackend)
-    setup_sdl_mixer_backend(ryolib)
 elseif(VITA)
     target_compile_definitions(ryolib PUBLIC RYO_VITA=1)
 
@@ -144,17 +82,11 @@ elseif(VITA)
     include(windowing/SDLBackend)
     setup_sdl_backend(ryolib)
 
-    # Text drawing backends
-
     include(text/SDLBackend)
     setup_sdl_ttf_backend(ryolib)
 
-    # Image decoding backends
-
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
-
-    # Audio backends
 
     include(audio/SDLMixerBackend)
     setup_sdl_mixer_backend(ryolib)

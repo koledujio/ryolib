@@ -2,8 +2,6 @@ set(CMAKE_SYSTEM_NAME Windows)
 
 set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
-set(CMAKE_OBJC_COMPILER x86_64-w64-mingw32-gcc)
-set(CMAKE_OBJCXX_COMPILER x86_64-w64-mingw32-g++)
 set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
 
 set(CMAKE_AR x86_64-w64-mingw32-ar)
@@ -16,6 +14,4 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_STATIC_LIBRARY_SUFFIX .a)
 set(CMAKE_IMPORT_LIBRARY_SUFFIX .a)
 set(CMAKE_SHARED_LIBRARY_SUFFIX .dll)
-# Prefer Windows import libraries when a DLL and a static archive have the
-# same base name (notably libobjc.dll.a versus libobjc.a).
-set(CMAKE_FIND_LIBRARY_SUFFIXES .dll.a .a)
+set(CMAKE_FIND_LIBRARY_SUFFIXES .a .dll.a)
