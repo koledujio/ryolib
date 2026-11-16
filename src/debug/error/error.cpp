@@ -7,7 +7,13 @@
 #include <cstring>
 
 namespace ryo {
+#if defined(__vita__)
+    // The Vita toolchain emits emulated TLS relocations for thread_local
+    // storage, which vita-elf-create cannot handle. Use a plain static buffer.
+    static char _error_buffer[1024] = {};
+#else
     static thread_local char _error_buffer[1024] = {};
+#endif
 
     void error_set(const char* format, ...) {
         va_list args;

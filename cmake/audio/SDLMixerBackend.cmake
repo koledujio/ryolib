@@ -34,21 +34,24 @@ function(setup_sdl_mixer_backend TARGET_NAME)
         target_link_libraries(${TARGET_NAME} PUBLIC SDL3::SDL3-static)
     endif()
 
-    set(SDLMIXER_TESTS OFF CACHE BOOL "" FORCE)
-    set(SDLMIXER_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(SDLMIXER_INSTALL OFF CACHE BOOL "" FORCE)
-    set(SDLMIXER_VENDORED ON CACHE BOOL "" FORCE)
-    set(SDLMIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
-    set(SDLMIXER_MP3_MINIMP3 ON CACHE BOOL "" FORCE)
-    set(SDLMIXER_MIDI OFF CACHE BOOL "" FORCE)
+    # Fetch SDL_mixer (SDL3_mixer) unless the parent project already provides it.
+    if(NOT TARGET SDL3_mixer::SDL3_mixer)
+        set(SDLMIXER_TESTS OFF CACHE BOOL "" FORCE)
+        set(SDLMIXER_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(SDLMIXER_INSTALL OFF CACHE BOOL "" FORCE)
+        set(SDLMIXER_VENDORED ON CACHE BOOL "" FORCE)
+        set(SDLMIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
+        set(SDLMIXER_MP3_MINIMP3 ON CACHE BOOL "" FORCE)
+        set(SDLMIXER_MIDI OFF CACHE BOOL "" FORCE)
 
-    FetchContent_Declare(
-        SDL3_mixer
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-        GIT_TAG release-3.2.4
-    )
+        FetchContent_Declare(
+            SDL3_mixer
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+            GIT_TAG release-3.2.4
+        )
 
-    FetchContent_MakeAvailable(SDL3_mixer)
+        FetchContent_MakeAvailable(SDL3_mixer)
+    endif()
 
     target_link_libraries(${TARGET_NAME} PUBLIC SDL3_mixer::SDL3_mixer)
 endfunction()

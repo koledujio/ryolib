@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(GfxLibraryTest C CXX)
+
+project(ryolib
+    VERSION 0.1.0
+    DESCRIPTION "Cross-platform graphics, windowing, text, image and audio library"
+    LANGUAGES C CXX
+)
 
 if(APPLE)
     enable_language(OBJC OBJCXX)
@@ -9,90 +14,153 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
-set(VITA_APP_NAME "Ryolib UI Test")
-set(VITA_TITLEID "KOLE00001")
-set(VITA_VERSION "01.00")
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-include(CopyAssets)
+# Options
 
-set(RYO_SAFETY ON CACHE BOOL "" FORCE)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(RYO_DEBUG ON CACHE BOOL "" FORCE)
+# True when ryolib is the project being configured directly, false when it is
+# pulled in by another project through add_subdirectory()/FetchContent.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(RYOLIB_IS_TOP_LEVEL ON)
 else()
-    set(RYO_DEBUG OFF CACHE BOOL "" FORCE)
+    set(RYOLIB_IS_TOP_LEVEL OFF)
 endif()
 
-add_subdirectory(ryolib)
+option(RYOLIB_BUILD_EXAMPLES
+    "Build the ryolib example application"
+    ${RYOLIB_IS_TOP_LEVEL}
+)
 
-add_executable(TestApp src/main.cpp)
-
-target_link_libraries(TestApp PRIVATE ryolib)
-
-if(IOS)
-    set_target_properties(TestApp PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.ryolib.uitest"
-        MACOSX_BUNDLE_BUNDLE_NAME "RyolibTest"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
-        MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ios/Info.plist.in"
-        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.ryolib.uitest"
-    )
-elseif(WIN32)
+if(NOT DEFINED RYO_DEBUG)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE FALSE)
+        set(_ryolib_debug_default ON)
     else()
-        set_property(TARGET TestApp PROPERTY WIN32_EXECUTABLE TRUE)
+        set(_ryolib_debug_default OFF)
+    endif()
+endif()
+
+option(RYO_DEBUG
+    "Enable ryolib debug assertions (abort on invalid use)"
+    ${_ryolib_debug_default}
+)
+
+option(RYO_SAFETY
+    "Enable ryolib runtime safety checks (report an error and return instead of crashing)"
+    ON
+)
+
+# Library
+
+set(RYOLIB_SOURCES
+    src/math/matrix4.cpp
+    src/math/vector3.cpp
+    src/math/vector2.cpp
+
+    src/debug/error/error.cpp
+)
+
+add_library(ryolib STATIC ${RYOLIB_SOURCES})
+add_library(ryolib::ryolib ALIAS ryolib)
+
+# PIC is unnecessary for a static library, and the Vita ELF loader cannot
+# handle the R_ARM_BASE_PREL/GOT relocations that -fPIC generates.
+if(NOT VITA)
+    set_target_properties(ryolib PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+    )
+endif()
+
+# Make sure consumers compile with at least the same C++ standard.
+target_compile_features(ryolib PUBLIC cxx_std_17)
+
+target_include_directories(ryolib PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+if(RYO_DEBUG)
+    target_compile_definitions(ryolib PRIVATE RYO_DEBUG)
+endif()
+
+if(RYO_SAFETY)
+    target_compile_definitions(ryolib PRIVATE RYO_SAFETY)
+endif()
+
+if(APPLE)
+    if(IOS)
+        target_compile_definitions(ryolib PUBLIC RYO_APPLE_IOS=1)
+    else()
+        target_compile_definitions(ryolib PUBLIC RYO_APPLE_MAC=1)
     endif()
 
-    target_link_options(TestApp PRIVATE -static -static-libgcc -static-libstdc++)
+    include(graphics/MetalBackend)
+    setup_metal_backend(ryolib)
+
+    include(windowing/SDLBackend)
+    setup_sdl_backend(ryolib)
+
+    include(text/SDLBackend)
+    setup_sdl_ttf_backend(ryolib)
+
+    include(image/StbImageBackend)
+    setup_stb_image_backend(ryolib)
+
+    include(audio/MiniaudioBackend)
+    setup_miniaudio_backend(ryolib)
+elseif(WIN32)
+    target_compile_definitions(ryolib PUBLIC RYO_WIN32=1)
+
+    include(graphics/D3D11Backend)
+    setup_d3d11_backend(ryolib)
+
+    include(windowing/SDLBackend)
+    setup_sdl_backend(ryolib)
+
+    include(text/SDLBackend)
+    setup_sdl_ttf_backend(ryolib)
+
+    include(image/StbImageBackend)
+    setup_stb_image_backend(ryolib)
+
+    include(audio/MiniaudioBackend)
+    setup_miniaudio_backend(ryolib)
 elseif(VITA)
+    target_compile_definitions(ryolib PUBLIC RYO_VITA=1)
+
     include("${VITASDK}/share/vita.cmake")
 
-    vita_create_self(ui_test.self TestApp)
-
-    file(GLOB_RECURSE VITA_ASSETS
-        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
+    target_link_libraries(ryolib PRIVATE
+        pthread
+        SceLibKernel_stub
     )
 
-    set(VITA_VPK_FILES "")
+    include(graphics/GxmBackend)
+    setup_gxm_backend(ryolib)
 
-    foreach(ASSET ${VITA_ASSETS})
-        list(APPEND VITA_VPK_FILES
-            "${CMAKE_CURRENT_SOURCE_DIR}/assets/${ASSET}" "assets/${ASSET}"
-        )
-    endforeach()
+    include(windowing/SDLBackend)
+    setup_sdl_backend(ryolib)
 
-    file(GLOB_RECURSE VITA_SHADERS
-        CONFIGURE_DEPENDS
-        "${CMAKE_BINARY_DIR}/shaders/*"
-    )
+    include(text/SDLBackend)
+    setup_sdl_ttf_backend(ryolib)
 
-    foreach(SHADER ${VITA_SHADERS})
-        if(IS_DIRECTORY "${SHADER}")
-            continue()
-        endif()
+    include(image/StbImageBackend)
+    setup_stb_image_backend(ryolib)
 
-        get_filename_component(SHADER_NAME "${SHADER}" NAME)
-
-        list(APPEND VITA_VPK_FILES
-            "${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME}" "shaders/${SHADER_NAME}"
-        )
-    endforeach()
-
-    vita_create_vpk(ui_test.vpk ${VITA_TITLEID} ui_test.self
-        VERSION ${VITA_VERSION}
-        NAME ${VITA_APP_NAME}
-        FILE ${VITA_VPK_FILES}
+    include(audio/SDLMixerBackend)
+    setup_sdl_mixer_backend(ryolib)
+else()
+    message(FATAL_ERROR
+        "[ryolib] Unsupported platform ${CMAKE_SYSTEM_NAME}.\n"
+        "[ryolib] You're most likely building for Linux or BSD, none of which "
+        "currently have a supported graphics backend.\n"
+        "[ryolib] Currently supported graphics backends are: Metal, D3D11, GXM."
     )
 endif()
 
-if(NOT VITA)
-    target_copy_assets(TestApp)
+# ---------------------------------------------------------------------------
+# Example application
+# ---------------------------------------------------------------------------
+
+if(RYOLIB_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()

@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Build next to this script (in examples/), regardless of the caller's cwd.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 if ! command -v cmake &> /dev/null; then
     echo "Error: 'cmake' is not installed or not in your PATH."
     exit 1
@@ -27,10 +31,13 @@ if ! command -v x86_64-w64-mingw32-g++ &> /dev/null; then
 fi
 
 echo "=== Configuring Win32 Cross-Compilation ==="
-cmake -S . -B build-win32 -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Debug
+cmake -S .. -B build-win32 \
+    -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/mingw-toolchain.cmake" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_BUILD_TYPE=Debug
 
 echo "=== Building Win32 App ==="
 cmake --build build-win32 -j 8
 
 echo "=== Win32 Build Complete! ==="
-echo "You can find the executable in 'build-win32'"
+echo "You can find the example executable in '$SCRIPT_DIR/build-win32/examples'"

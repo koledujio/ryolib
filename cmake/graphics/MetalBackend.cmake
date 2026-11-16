@@ -52,7 +52,7 @@ function(setup_metal_backend TARGET_NAME)
         list(APPEND AIR_FILES ${AIR_FILE})
     endforeach()
 
-    set(METALLIB_OUTPUT "${CMAKE_BINARY_DIR}/shaders.metallib")
+    set(METALLIB_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/shaders.metallib")
     add_custom_command(
         OUTPUT ${METALLIB_OUTPUT}
         COMMAND "${COMPILE_METAL_SCRIPT}" "${DEFAULT_SDK}" link "${METALLIB_OUTPUT}" ${AIR_FILES}
@@ -61,6 +61,12 @@ function(setup_metal_backend TARGET_NAME)
         VERBATIM
     )
 
-    add_custom_target(MetalShaders ALL DEPENDS ${METALLIB_OUTPUT})
-    add_dependencies(${TARGET_NAME} MetalShaders)
+    add_custom_target(ryolib_metal_shaders ALL DEPENDS ${METALLIB_OUTPUT})
+    add_dependencies(${TARGET_NAME} ryolib_metal_shaders)
+
+    # Consumers (the example app and external projects) use this property to
+    # find the compiled shader library when copying it next to their executable.
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        RYOLIB_METALLIB "${METALLIB_OUTPUT}"
+    )
 endfunction()

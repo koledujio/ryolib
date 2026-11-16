@@ -53,5 +53,5 @@ function(target_compile_hlsl TARGET_NAME)
         target_sources(${TARGET_NAME} PRIVATE ${HEADER_OUTPUT})
     endforeach()
 
-    target_include_directories(${TARGET_NAME} PUBLIC ${GENERATED_DIR})
+    target_include_directories(${TARGET_NAME} PRIVATE ${GENERATED_DIR})
 endfunction()

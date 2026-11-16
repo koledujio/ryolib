@@ -13,13 +13,40 @@ function(setup_gxm_backend TARGET_NAME)
         SceCtrl_stub
     )
 
-    set(PSP2CGC_DIR "${CMAKE_BINARY_DIR}/tools")
+    set(PSP2CGC_DIR "${CMAKE_CURRENT_BINARY_DIR}/tools")
     set(PSP2CGC_EXE "${PSP2CGC_DIR}/psp2cgc.exe")
 
     if(CMAKE_HOST_WIN32)
         set(PSP2CGC_RUNNER "${PSP2CGC_EXE}")
     else()
-        find_program(WINE_EXECUTABLE wine REQUIRED)
+        # psp2cgc is a Windows executable, so it needs Wine on macOS/Linux.
+        # If provided use the -DWINE_EXECUTABLE=... value.
+        if(NOT WINE_EXECUTABLE)
+            find_program(WINE_EXECUTABLE wine)
+        endif()
+
+        if(NOT WINE_EXECUTABLE AND CMAKE_HOST_APPLE)
+            # The macOS Wine packages ship the command-line binary inside the
+            # application bundle instead of putting a "wine" shim in PATH.
+            # Use CMAKE_HOST_APPLE: APPLE describes the target, which is not
+            # Apple when cross-compiling for the Vita.
+            file(GLOB _ryolib_wine_bundles
+                "/Applications/Wine*.app/Contents/Resources/wine/bin/wine"
+                "$ENV{HOME}/Applications/Wine*.app/Contents/Resources/wine/bin/wine"
+            )
+            if(_ryolib_wine_bundles)
+                list(GET _ryolib_wine_bundles 0 WINE_EXECUTABLE)
+            endif()
+        endif()
+
+        if(NOT WINE_EXECUTABLE)
+            message(FATAL_ERROR
+                "[ryolib] Wine is required to run psp2cgc.exe on this host.\n"
+                "[ryolib] Install Wine or pass -DWINE_EXECUTABLE=/path/to/wine."
+            )
+        endif()
+
+        message(STATUS "[ryolib] Using Wine: ${WINE_EXECUTABLE}")
         set(PSP2CGC_RUNNER "${WINE_EXECUTABLE}" "${PSP2CGC_EXE}")
     endif()
 
@@ -50,7 +77,7 @@ function(setup_gxm_backend TARGET_NAME)
     )
     set(GXP_FILES "")
 
-    set(GXM_SHADER_OUTPUT_DIR "${CMAKE_BINARY_DIR}/shaders")
+    set(GXM_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
     file(MAKE_DIRECTORY "${GXM_SHADER_OUTPUT_DIR}")
 
     set(GXM_SHADER_WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/gxm_shader_work")
@@ -93,6 +120,12 @@ function(setup_gxm_backend TARGET_NAME)
         list(APPEND GXP_FILES ${GXP})
     endforeach()
 
-    add_custom_target(GxmShaders ALL DEPENDS ${GXP_FILES})
-    add_dependencies(${TARGET_NAME} GxmShaders)
+    add_custom_target(ryolib_gxm_shaders ALL DEPENDS ${GXP_FILES})
+    add_dependencies(${TARGET_NAME} ryolib_gxm_shaders)
+
+    # Consumers (the example app and external projects) use this property to
+    # find the compiled shaders when packaging them for the Vita.
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        RYOLIB_GXM_SHADER_DIR "${GXM_SHADER_OUTPUT_DIR}"
+    )
 endfunction()
