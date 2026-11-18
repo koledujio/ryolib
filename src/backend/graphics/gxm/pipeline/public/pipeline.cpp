@@ -117,7 +117,16 @@ namespace ryo {
 
         SceGxmBlendInfo blendInfo = {};
         _blend_info_gxm_get(desc.blendMode, blendInfo);
-        const SceGxmBlendInfo* blendInfoPtr = (desc.blendMode != BLEND_MODE_OPAQUE) ? &blendInfo : nullptr;
+
+        // The stencil pipeline only writes to the stencil buffer, so it must not
+        // touch the color attachment (matching the Metal and D3D11 backends).
+        const SceGxmBlendInfo* blendInfoPtr = nullptr;
+        if (desc.shader == BUILTIN_SHADER_STENCIL) {
+            blendInfo.colorMask = SCE_GXM_COLOR_MASK_NONE;
+            blendInfoPtr = &blendInfo;
+        } else if (desc.blendMode != BLEND_MODE_OPAQUE) {
+            blendInfoPtr = &blendInfo;
+        }
 
         SceGxmFragmentProgram* fragmentProgram = nullptr;
         int fragmentCreateResult = sceGxmShaderPatcherCreateFragmentProgram(

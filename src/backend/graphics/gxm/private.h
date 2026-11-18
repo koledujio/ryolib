@@ -152,10 +152,20 @@ namespace ryo {
         float radius;
         Camera camera;
         bool hasCamera;
+
+        /*
+         * GXM masks are drawn as precomputed geometry instead of relying on
+         * fragment discard. The vertices are in the stencil quad's local space
+         * and are transformed by the command matrix, exactly like the quad.
+         */
+        Buffer* vertexBuffer = nullptr;
+        Buffer* indexBuffer = nullptr;
+        uint32_t indexCount = 0;
     };
 
     struct InternalStencil {
         InternalRenderer* renderer = nullptr;
+        const Renderer* publicRenderer = nullptr;
         InternalRenderTarget* renderTarget = nullptr;
 
         StencilCommand* commands = nullptr;

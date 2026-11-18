@@ -1,7 +1,5 @@
 #include "../private.h"
 
-#include <cmath>
-
 namespace ryo {
     static void _gxm_apply_depth_mode(SceGxmContext* context, DepthMode mode) {
         switch (mode) {
@@ -46,6 +44,117 @@ namespace ryo {
 
         sceGxmSetFrontPolygonMode(context, polyMode);
         sceGxmSetBackPolygonMode(context, polyMode);
+    }
+
+    static void _gxm_stencil_func(
+        SceGxmContext* context,
+        SceGxmStencilFunc func,
+        SceGxmStencilOp stencilFail,
+        SceGxmStencilOp depthFail,
+        SceGxmStencilOp depthPass,
+        unsigned char compareMask,
+        unsigned char writeMask
+    ) {
+        sceGxmSetFrontStencilFunc(context, func, stencilFail, depthFail, depthPass, compareMask, writeMask);
+        sceGxmSetBackStencilFunc(context, func, stencilFail, depthFail, depthPass, compareMask, writeMask);
+    }
+
+    static void _gxm_stencil_ref(SceGxmContext* context, unsigned int ref) {
+        sceGxmSetFrontStencilRef(context, ref);
+        sceGxmSetBackStencilRef(context, ref);
+    }
+
+    static void _gxm_stencil_write_state(SceGxmContext* context, unsigned int ref) {
+        _gxm_stencil_func(
+            context,
+            SCE_GXM_STENCIL_FUNC_ALWAYS,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_REPLACE,
+            0xFF,
+            0xFF
+        );
+        _gxm_stencil_ref(context, ref);
+    }
+
+    static void _gxm_stencil_test_state(SceGxmContext* context, unsigned int ref) {
+        _gxm_stencil_func(
+            context,
+            SCE_GXM_STENCIL_FUNC_EQUAL,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_KEEP,
+            0xFF,
+            0xFF
+        );
+        _gxm_stencil_ref(context, ref);
+    }
+
+    static void _gxm_stencil_disabled_state(SceGxmContext* context) {
+        _gxm_stencil_func(
+            context,
+            SCE_GXM_STENCIL_FUNC_ALWAYS,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_KEEP,
+            SCE_GXM_STENCIL_OP_KEEP,
+            0xFF,
+            0xFF
+        );
+        _gxm_stencil_ref(context, 0);
+    }
+
+    /*
+     * GXM has no stencil clear API. Clear the stencil buffer by drawing a
+     * full-screen quad with a test that never passes and ops that always
+     * zero the stencil value.
+     */
+    static void _gxm_stencil_clear(InternalRenderer* internal) {
+        SceGxmContext* context = internal->context;
+        const Pipeline* pipeline = internal->stencilPipeline;
+
+        _gxm_stencil_func(
+            context,
+            SCE_GXM_STENCIL_FUNC_NEVER,
+            SCE_GXM_STENCIL_OP_ZERO,
+            SCE_GXM_STENCIL_OP_ZERO,
+            SCE_GXM_STENCIL_OP_ZERO,
+            0xFF,
+            0xFF
+        );
+        _gxm_stencil_ref(context, 0);
+
+        sceGxmSetCullMode(context, SCE_GXM_CULL_NONE);
+        sceGxmSetFrontPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
+        sceGxmSetBackPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
+
+        sceGxmSetVertexProgram(context, pipeline->internal->vertexProgram);
+        sceGxmSetFragmentProgram(context, pipeline->internal->fragmentProgram);
+        sceGxmSetVertexStream(context, 0, internal->quadVertexBuffer->internal->mem);
+
+        Matrix4 mvp = Matrix4::scaling(2.0f, 2.0f, 1.0f).transpose();
+
+        void* vertexUniform = nullptr;
+        sceGxmReserveVertexDefaultUniformBuffer(context, &vertexUniform);
+        sceGxmSetUniformDataF(vertexUniform, pipeline->internal->vertexParameters[0], 0, 16, mvp.m);
+
+        const float fragmentData[4] = {
+            1.0f,
+            1.0f,
+            0.0f,
+            static_cast<float>(_STENCIL_SHAPE_RECTANGLE)
+        };
+
+        void* fragmentUniform = nullptr;
+        sceGxmReserveFragmentDefaultUniformBuffer(context, &fragmentUniform);
+        sceGxmSetUniformDataF(fragmentUniform, pipeline->internal->fragmentParameters[0], 0, 4, fragmentData);
+
+        sceGxmDraw(
+            context,
+            SCE_GXM_PRIMITIVE_TRIANGLES,
+            SCE_GXM_INDEX_FORMAT_U32,
+            internal->quadIndexBuffer->internal->mem,
+            6
+        );
     }
 
     bool Renderer::draw_ex(const DrawCall& draw) const {
@@ -93,36 +202,28 @@ namespace ryo {
         SceGxmContext* context = internal->context;
 
         if (useStencil) {
+            RYO_ENSURE(internal->stencilPipeline != nullptr && internal->stencilPipeline->valid(), false, "Invalid stencil pipeline");
+            RYO_ENSURE(internal->quadVertexBuffer != nullptr && internal->quadVertexBuffer->valid(), false, "Invalid quad vertex buffer");
+            RYO_ENSURE(internal->quadIndexBuffer != nullptr && internal->quadIndexBuffer->valid(), false, "Invalid quad index buffer");
+
             sceGxmSetFrontDepthWriteEnable(context, SCE_GXM_DEPTH_WRITE_DISABLED);
             sceGxmSetBackDepthWriteEnable(context, SCE_GXM_DEPTH_WRITE_DISABLED);
             sceGxmSetFrontDepthFunc(context, SCE_GXM_DEPTH_FUNC_ALWAYS);
             sceGxmSetBackDepthFunc(context, SCE_GXM_DEPTH_FUNC_ALWAYS);
 
-            sceGxmSetFrontStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_ALWAYS,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_REPLACE,
-                0xFF,
-                0xFF
-            );
-            sceGxmSetBackStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_ALWAYS,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_REPLACE,
-                0xFF,
-                0xFF
-            );
-            sceGxmSetFrontStencilRef(context, 1);
-            sceGxmSetBackStencilRef(context, 1);
+            // Start from a known clean stencil buffer, GXM cannot clear it directly.
+            _gxm_stencil_clear(internal);
+
+            _gxm_stencil_write_state(context, 1);
+
+            // The mask must not depend on whatever rasterizer state the previous
+            // draw call left behind.
+            sceGxmSetCullMode(context, SCE_GXM_CULL_NONE);
+            sceGxmSetFrontPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
+            sceGxmSetBackPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
 
             sceGxmSetVertexProgram(context, internal->stencilPipeline->internal->vertexProgram);
             sceGxmSetFragmentProgram(context, internal->stencilPipeline->internal->fragmentProgram);
-
-            sceGxmSetVertexStream(context, 0, internal->quadVertexBuffer->internal->mem);
 
             int targetWidth = 0, targetHeight = 0;
             _draw_get_target_size(*internal, targetWidth, targetHeight);
@@ -141,65 +242,26 @@ namespace ryo {
                 sceGxmReserveVertexDefaultUniformBuffer(context, &vUni);
                 sceGxmSetUniformDataF(vUni, internal->stencilPipeline->internal->vertexParameters[0], 0, 16, mvpTransposed.m);
 
-                float sx = sqrtf(command.matrix.m[0] * command.matrix.m[0] + command.matrix.m[1] * command.matrix.m[1] + command.matrix.m[2] * command.matrix.m[2]);
-                float sy = sqrtf(command.matrix.m[4] * command.matrix.m[4] + command.matrix.m[5] * command.matrix.m[5] + command.matrix.m[6] * command.matrix.m[6]);
-                if (sx <= 0.0f) sx = 1.0f;
-                if (sy <= 0.0f) sy = 1.0f;
-
+                // The mask outline is precomputed geometry, so the fragment
+                // shader must not cut anything out of it. Shape 0 disables the
+                // SDF discard path.
                 void* fUni = nullptr;
                 sceGxmReserveFragmentDefaultUniformBuffer(context, &fUni);
-                float fragData[4] = {
-                    sx,
-                    sy,
-                    command.radius,
-                    static_cast<float>(command.shape)
-                };
+                const float fragData[4] = { 1.0f, 1.0f, 0.0f, static_cast<float>(_STENCIL_SHAPE_RECTANGLE) };
                 sceGxmSetUniformDataF(fUni, internal->stencilPipeline->internal->fragmentParameters[0], 0, 4, fragData);
 
-                sceGxmDraw(context, SCE_GXM_PRIMITIVE_TRIANGLES, SCE_GXM_INDEX_FORMAT_U32, internal->quadIndexBuffer->internal->mem, 6);
+                if (command.vertexBuffer != nullptr && command.indexBuffer != nullptr && command.indexCount > 0) {
+                    sceGxmSetVertexStream(context, 0, command.vertexBuffer->internal->mem);
+                    sceGxmDraw(context, SCE_GXM_PRIMITIVE_TRIANGLES, SCE_GXM_INDEX_FORMAT_U32, command.indexBuffer->internal->mem, command.indexCount);
+                } else {
+                    sceGxmSetVertexStream(context, 0, internal->quadVertexBuffer->internal->mem);
+                    sceGxmDraw(context, SCE_GXM_PRIMITIVE_TRIANGLES, SCE_GXM_INDEX_FORMAT_U32, internal->quadIndexBuffer->internal->mem, 6);
+                }
             }
 
-            sceGxmSetFrontStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_EQUAL,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                0xFF,
-                0
-            );
-            sceGxmSetBackStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_EQUAL,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                0xFF,
-                0
-            );
-            sceGxmSetFrontStencilRef(context, 1);
-            sceGxmSetBackStencilRef(context, 1);
+            _gxm_stencil_test_state(context, 1);
         } else {
-            sceGxmSetFrontStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_ALWAYS,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                0,
-                0
-            );
-            sceGxmSetBackStencilFunc(
-                context,
-                SCE_GXM_STENCIL_FUNC_ALWAYS,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                SCE_GXM_STENCIL_OP_KEEP,
-                0,
-                0
-            );
-            sceGxmSetFrontStencilRef(context, 0);
-            sceGxmSetBackStencilRef(context, 0);
+            _gxm_stencil_disabled_state(context);
         }
 
         _gxm_apply_depth_mode(context, draw.depthMode);
