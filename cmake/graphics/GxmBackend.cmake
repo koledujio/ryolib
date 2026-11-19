@@ -123,9 +123,9 @@ function(setup_gxm_backend TARGET_NAME)
     add_custom_target(ryolib_gxm_shaders ALL DEPENDS ${GXP_FILES})
     add_dependencies(${TARGET_NAME} ryolib_gxm_shaders)
 
-    # Consumers (the example app and external projects) use this property to
-    # find the compiled shaders when packaging them for the Vita.
+    # Used by ryolib_package_app() when building the Vita VPK.
     set_target_properties(${TARGET_NAME} PROPERTIES
         RYOLIB_GXM_SHADER_DIR "${GXM_SHADER_OUTPUT_DIR}"
+        RYOLIB_GXM_SHADERS "${GXP_FILES}"
     )
 endfunction()

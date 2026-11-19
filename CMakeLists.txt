@@ -18,19 +18,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Options
 
-# True when ryolib is the project being configured directly, false when it is
-# pulled in by another project through add_subdirectory()/FetchContent.
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    set(RYOLIB_IS_TOP_LEVEL ON)
-else()
-    set(RYOLIB_IS_TOP_LEVEL OFF)
-endif()
-
-option(RYOLIB_BUILD_EXAMPLES
-    "Build the ryolib example application"
-    ${RYOLIB_IS_TOP_LEVEL}
-)
-
 if(NOT DEFINED RYO_DEBUG)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(_ryolib_debug_default ON)
@@ -48,6 +35,20 @@ option(RYO_SAFETY
     "Enable ryolib runtime safety checks (report an error and return instead of crashing)"
     ON
 )
+
+set(RYOLIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/dist" CACHE STRING
+    "Directory for final application outputs (executables, bundles, VPKs)"
+)
+
+get_property(_ryolib_output_dir_type CACHE RYOLIB_OUTPUT_DIR PROPERTY TYPE)
+
+if(_ryolib_output_dir_type STREQUAL "PATH"
+   AND "${RYOLIB_OUTPUT_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+    set(RYOLIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/dist" CACHE STRING
+        "Directory for final application outputs (executables, bundles, VPKs)"
+        FORCE
+    )
+endif()
 
 # Library
 
@@ -155,12 +156,4 @@ else()
         "currently have a supported graphics backend.\n"
         "[ryolib] Currently supported graphics backends are: Metal, D3D11, GXM."
     )
-endif()
-
-# ---------------------------------------------------------------------------
-# Example application
-# ---------------------------------------------------------------------------
-
-if(RYOLIB_BUILD_EXAMPLES)
-    add_subdirectory(examples)
 endif()
