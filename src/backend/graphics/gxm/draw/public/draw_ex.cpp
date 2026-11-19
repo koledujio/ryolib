@@ -103,11 +103,6 @@ namespace ryo {
         _gxm_stencil_ref(context, 0);
     }
 
-    /*
-     * GXM has no stencil clear API. Clear the stencil buffer by drawing a
-     * full-screen quad with a test that never passes and ops that always
-     * zero the stencil value.
-     */
     static void _gxm_stencil_clear(InternalRenderer* internal) {
         SceGxmContext* context = internal->context;
         const Pipeline* pipeline = internal->stencilPipeline;
@@ -211,13 +206,10 @@ namespace ryo {
             sceGxmSetFrontDepthFunc(context, SCE_GXM_DEPTH_FUNC_ALWAYS);
             sceGxmSetBackDepthFunc(context, SCE_GXM_DEPTH_FUNC_ALWAYS);
 
-            // Start from a known clean stencil buffer, GXM cannot clear it directly.
             _gxm_stencil_clear(internal);
 
             _gxm_stencil_write_state(context, 1);
 
-            // The mask must not depend on whatever rasterizer state the previous
-            // draw call left behind.
             sceGxmSetCullMode(context, SCE_GXM_CULL_NONE);
             sceGxmSetFrontPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
             sceGxmSetBackPolygonMode(context, SCE_GXM_POLYGON_MODE_TRIANGLE_FILL);
@@ -242,9 +234,6 @@ namespace ryo {
                 sceGxmReserveVertexDefaultUniformBuffer(context, &vUni);
                 sceGxmSetUniformDataF(vUni, internal->stencilPipeline->internal->vertexParameters[0], 0, 16, mvpTransposed.m);
 
-                // The mask outline is precomputed geometry, so the fragment
-                // shader must not cut anything out of it. Shape 0 disables the
-                // SDF discard path.
                 void* fUni = nullptr;
                 sceGxmReserveFragmentDefaultUniformBuffer(context, &fUni);
                 const float fragData[4] = { 1.0f, 1.0f, 0.0f, static_cast<float>(_STENCIL_SHAPE_RECTANGLE) };

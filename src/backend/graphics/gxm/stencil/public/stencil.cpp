@@ -46,12 +46,6 @@ namespace ryo {
         delete stencil;
     }
 
-    /*
-     * GXM masks are drawn as geometry instead of being cut out with fragment
-     * discard, so the outlines below have to match the shapes the Metal and
-     * D3D11 backends produce with their SDF shaders. All coordinates are in the
-     * local space of the stencil quad, which spans [-0.5, 0.5] on both axes.
-     */
     static void _stencil_append_vertex(std::vector<PositionVertex>& vertices, float x, float y) {
         PositionVertex vertex = {};
         vertex.position[0] = x;
@@ -83,7 +77,6 @@ namespace ryo {
         const float halfPi = 1.57079632679f;
         const int segments = 12;
 
-        // Counter-clockwise, starting at the bottom-right corner.
         const float centerX[4] = { innerX, innerX, -innerX, -innerX };
         const float centerY[4] = { -innerY, innerY, innerY, -innerY };
         const float startAngle[4] = { -halfPi, 0.0f, halfPi, 2.0f * halfPi };
@@ -116,8 +109,6 @@ namespace ryo {
 
         switch (command.shape) {
             case _STENCIL_SHAPE_ROUNDED_RECTANGLE: {
-                // The SDF uses a circular radius in world units, so convert it
-                // into the local (per-axis) radii of the ellipse corners.
                 float sx = sqrtf(
                     command.matrix.m[0] * command.matrix.m[0] +
                     command.matrix.m[1] * command.matrix.m[1] +

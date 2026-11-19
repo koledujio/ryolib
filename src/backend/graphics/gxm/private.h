@@ -153,11 +153,6 @@ namespace ryo {
         Camera camera;
         bool hasCamera;
 
-        /*
-         * GXM masks are drawn as precomputed geometry instead of relying on
-         * fragment discard. The vertices are in the stencil quad's local space
-         * and are transformed by the command matrix, exactly like the quad.
-         */
         Buffer* vertexBuffer = nullptr;
         Buffer* indexBuffer = nullptr;
         uint32_t indexCount = 0;
