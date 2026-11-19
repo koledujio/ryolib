@@ -11,7 +11,7 @@ if [ "$(uname)" != "Darwin" ]; then
 fi
 
 echo "=== Configuring iOS Xcode Project ==="
-cmake -S .. -B build-ios -G Xcode \
+cmake -S . -B build-ios -G Xcode \
     -DCMAKE_SYSTEM_NAME=iOS \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -19,3 +19,4 @@ cmake -S .. -B build-ios -G Xcode \
 
 echo "=== iOS Project Generated! ==="
 echo "You can open '$SCRIPT_DIR/build-ios/ryolib.xcodeproj' in Xcode to build, sign, and deploy the TestApp example to your iPhone."
+echo "Apps built in Xcode are written to '$SCRIPT_DIR/build-ios/dist/RyolibExamplesApp.app'."

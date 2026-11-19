@@ -23,7 +23,7 @@ if [ -z "$VITASDK" ]; then
 fi
 
 echo "=== Configuring Vita Cross-Compilation ==="
-cmake -S .. -B build-vita \
+cmake -S . -B build-vita \
     -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake" \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_BUILD_TYPE=Debug
@@ -32,4 +32,4 @@ echo "=== Building Vita App ==="
 cmake --build build-vita -j 8
 
 echo "=== Vita Build Complete! ==="
-echo "You can find the vpk in '$SCRIPT_DIR/build-vita/examples'"
+echo "You can find the vpk in '$SCRIPT_DIR/build-vita/dist/RyolibExamplesApp.vpk'"

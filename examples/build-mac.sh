@@ -11,10 +11,10 @@ if [ "$(uname)" != "Darwin" ]; then
 fi
 
 echo "=== Configuring macOS Build ==="
-cmake -S .. -B build-mac -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build-mac -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Debug
 
 echo "=== Building macOS App ==="
 cmake --build build-mac -j 8
 
 echo "=== macOS Build Complete! ==="
-echo "You can find the example executable in '$SCRIPT_DIR/build-mac/examples'"
+echo "You can find the example app in '$SCRIPT_DIR/build-mac/dist/RyolibExamplesApp.app'"

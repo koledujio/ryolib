@@ -31,7 +31,7 @@ if ! command -v x86_64-w64-mingw32-g++ &> /dev/null; then
 fi
 
 echo "=== Configuring Win32 Cross-Compilation ==="
-cmake -S .. -B build-win32 \
+cmake -S . -B build-win32 \
     -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/mingw-toolchain.cmake" \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_BUILD_TYPE=Debug
@@ -40,4 +40,4 @@ echo "=== Building Win32 App ==="
 cmake --build build-win32 -j 8
 
 echo "=== Win32 Build Complete! ==="
-echo "You can find the example executable in '$SCRIPT_DIR/build-win32/examples'"
+echo "You can find the example executable in '$SCRIPT_DIR/build-win32/dist/RyolibExamplesApp.exe'"
