@@ -280,6 +280,34 @@ namespace ryo {
     };
 
     /**
+     * @brief Mouse buttons.
+     *
+     * @see Event
+     * @see EventType
+     */
+    enum MouseButton {
+        MOUSE_BUTTON_NONE = 0, ///< No button / unrecognized button.
+        MOUSE_BUTTON_LEFT,
+        MOUSE_BUTTON_MIDDLE,
+        MOUSE_BUTTON_RIGHT,
+        MOUSE_BUTTON_X1,
+        MOUSE_BUTTON_X2
+    };
+
+    /**
+     * @brief Mouse button state bits.
+     *
+     * @see Event::data::mouse
+     */
+    enum MouseButtonFlag {
+        MOUSE_BUTTON_FLAG_LEFT = 1u << 0,
+        MOUSE_BUTTON_FLAG_MIDDLE = 1u << 1,
+        MOUSE_BUTTON_FLAG_RIGHT = 1u << 2,
+        MOUSE_BUTTON_FLAG_X1 = 1u << 3,
+        MOUSE_BUTTON_FLAG_X2 = 1u << 4
+    };
+
+    /**
      * @brief Gamepad types.
      *
      * @see Gamepad
@@ -565,6 +593,45 @@ namespace ryo {
         EVENT_KEY_UP,
 
         /**
+         * @brief Mouse pointer moved.
+         *
+         * Coordinates are in logical pixels relative to the window, with the
+         * origin at the top left. Populates @ref Event::windowId,
+         * @ref Event::data::mouse::x, @ref Event::data::mouse::y,
+         * @ref Event::data::mouse::deltaX, @ref Event::data::mouse::deltaY and
+         * @ref Event::data::mouse::buttons.
+         */
+        EVENT_MOUSE_MOVE,
+
+        /**
+         * @brief Mouse button pressed down.
+         *
+         * Populates @ref Event::windowId, @ref Event::data::mouse::x,
+         * @ref Event::data::mouse::y, @ref Event::data::mouse::button,
+         * @ref Event::data::mouse::clicks and @ref Event::data::mouse::buttons.
+         */
+        EVENT_MOUSE_BUTTON_DOWN,
+
+        /**
+         * @brief Mouse button released.
+         *
+         * Populates @ref Event::windowId, @ref Event::data::mouse::x,
+         * @ref Event::data::mouse::y, @ref Event::data::mouse::button and
+         * @ref Event::data::mouse::buttons.
+         */
+        EVENT_MOUSE_BUTTON_UP,
+
+        /**
+         * @brief Mouse wheel scrolled.
+         *
+         * Scroll values are normalized so that positive X scrolls right and
+         * positive Y scrolls down. Populates @ref Event::windowId,
+         * @ref Event::data::mouse::x, @ref Event::data::mouse::y,
+         * @ref Event::data::mouse::scrollX and @ref Event::data::mouse::scrollY.
+         */
+        EVENT_MOUSE_WHEEL,
+
+        /**
          * @brief Touch finger placed down on screen.
          *
          * Triggered when a new touch finger has been placed down on the screen.
@@ -780,6 +847,74 @@ namespace ryo {
                  */
                 bool isRepeat;
             } key;
+
+            struct {
+                /**
+                 * @brief Pointer X coordinate in logical pixels.
+                 *
+                 * Populated for all mouse events.
+                 */
+                float x;
+
+                /**
+                 * @brief Pointer Y coordinate in logical pixels.
+                 *
+                 * Populated for all mouse events.
+                 */
+                float y;
+
+                /**
+                 * @brief Pointer movement since the previous event in logical pixels.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_MOVE.
+                 */
+                float deltaX;
+
+                /**
+                 * @brief Pointer movement since the previous event in logical pixels.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_MOVE.
+                 */
+                float deltaY;
+
+                /**
+                 * @brief Button that changed state.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_BUTTON_DOWN and
+                 * @ref EventType::EVENT_MOUSE_BUTTON_UP.
+                 */
+                MouseButton button;
+
+                /**
+                 * @brief Number of consecutive clicks (1 for single, 2 for double, ...).
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_BUTTON_DOWN.
+                 */
+                unsigned int clicks;
+
+                /**
+                 * @brief Currently held buttons, as @ref MouseButtonFlag bits.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_MOVE,
+                 * @ref EventType::EVENT_MOUSE_BUTTON_DOWN and
+                 * @ref EventType::EVENT_MOUSE_BUTTON_UP.
+                 */
+                unsigned int buttons;
+
+                /**
+                 * @brief Horizontal scroll amount, positive to the right.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_WHEEL.
+                 */
+                float scrollX;
+
+                /**
+                 * @brief Vertical scroll amount, positive downwards.
+                 *
+                 * Populated for @ref EventType::EVENT_MOUSE_WHEEL.
+                 */
+                float scrollY;
+            } mouse;
 
             /**
              * @brief Display orientation.

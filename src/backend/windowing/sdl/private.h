@@ -33,6 +33,7 @@ namespace ryo {
     GamepadType _gamepad_get_ryo_type(SDL_GamepadType type);
     GamepadAxis _gamepad_get_ryo_axis(uint8_t axis);
     KeyCode _keyboard_get_ryo_key(SDL_Scancode scancode);
+    MouseButton _mouse_get_ryo_button(unsigned char button);
     const PlatformCapabilities& _platform_get_capabilities();
     bool _platform_get_forced_resolution(unsigned int& outWidth, unsigned int& outHeight);
     float _platform_get_content_scale(SDL_Window* sdlWindow);

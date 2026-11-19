@@ -4,6 +4,7 @@
 
 #include "SDL3/SDL_error.h"
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_mouse.h"
 
 namespace ryo {
     Application::Application() {
@@ -127,7 +128,39 @@ namespace ryo {
                 event.data.key.code = _keyboard_get_ryo_key(sdlEvent.key.scancode);
                 event.data.key.isRepeat = sdlEvent.key.repeat;
                 break;
-            
+
+            case SDL_EVENT_MOUSE_MOTION:
+                event.type = EVENT_MOUSE_MOVE;
+                event.windowId = static_cast<WindowID>(sdlEvent.motion.windowID);
+                event.data.mouse.x = sdlEvent.motion.x;
+                event.data.mouse.y = sdlEvent.motion.y;
+                event.data.mouse.deltaX = sdlEvent.motion.xrel;
+                event.data.mouse.deltaY = sdlEvent.motion.yrel;
+                event.data.mouse.buttons = static_cast<unsigned int>(sdlEvent.motion.state);
+                break;
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                event.type = sdlEvent.button.down ? EVENT_MOUSE_BUTTON_DOWN : EVENT_MOUSE_BUTTON_UP;
+                event.windowId = static_cast<WindowID>(sdlEvent.button.windowID);
+                event.data.mouse.x = sdlEvent.button.x;
+                event.data.mouse.y = sdlEvent.button.y;
+                event.data.mouse.button = _mouse_get_ryo_button(sdlEvent.button.button);
+                event.data.mouse.clicks = sdlEvent.button.clicks;
+                event.data.mouse.buttons = static_cast<unsigned int>(SDL_GetMouseState(nullptr, nullptr));
+                break;
+
+            case SDL_EVENT_MOUSE_WHEEL: {
+                event.type = EVENT_MOUSE_WHEEL;
+                event.windowId = static_cast<WindowID>(sdlEvent.wheel.windowID);
+                event.data.mouse.x = sdlEvent.wheel.mouse_x;
+                event.data.mouse.y = sdlEvent.wheel.mouse_y;
+                float scrollSign = sdlEvent.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0f : 1.0f;
+                event.data.mouse.scrollX = sdlEvent.wheel.x * scrollSign;
+                event.data.mouse.scrollY = -sdlEvent.wheel.y * scrollSign;
+                break;
+            }
+
             case SDL_EVENT_FINGER_DOWN:
                 event.type = EVENT_TOUCH_BEGIN;
                 event.windowId = static_cast<WindowID>(sdlEvent.tfinger.windowID);
