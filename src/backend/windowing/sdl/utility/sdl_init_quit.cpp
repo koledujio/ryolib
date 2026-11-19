@@ -1,9 +1,7 @@
 #include "../private.h"
 #include <SDL3/SDL_filesystem.h>
 
-#if defined(RYO_APPLE_IOS)
 #include <unistd.h>
-#endif
 
 namespace ryo {
     bool sdl_initialized = false;
@@ -13,12 +11,10 @@ namespace ryo {
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
             return false;
 
-#if defined(RYO_APPLE_IOS)
         const char* basePath = SDL_GetBasePath();
         if (basePath) {
             chdir(basePath);
         }
-#endif
 
         sdl_initialized = true;
         return true;
