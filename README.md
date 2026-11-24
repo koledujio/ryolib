@@ -218,6 +218,53 @@ It is made up out of 4 letters and 5 digits.
 | `RYOLIB_OUTPUT_DIR` | `${CMAKE_BINARY_DIR}/dist` | Folder where `ryolib_package_app()` writes final executables, bundles and VPKs. |
 | `RYO_DEBUG` | `ON` in `Debug`, otherwise `OFF` | Compile in debug assertions that abort on invalid use. |
 | `RYO_SAFETY` | `ON` | Compile in runtime safety checks that report an error and return instead of crashing. |
+| `RYOLIB_AUDIO_BACKEND_MINIAUDIO` | `ON` (`OFF` on Vita) | Compile the miniaudio audio backend. |
+| `RYOLIB_AUDIO_BACKEND_SDL_MIXER` | `ON` | Compile the SDL3_mixer audio backend. |
+
+### Audio backend selection
+
+Client code picks the backend when constructing an engine:
+
+```cpp
+ryo::AudioEngine engine;                                     // auto
+ryo::AudioEngine engine(ryo::AUDIO_BACKEND_MINIAUDIO);        // explicit
+ryo::AudioEngine engine(myCustomBackend);                     // custom instance
+engine.backend();                                            // which type was requested
+engine.backend_name();                                       // actual backend name
+```
+
+`AUDIO_BACKEND_AUTO` (the default) checks `RYO_AUDIO_BACKEND` first; if it is
+set, only that named backend is used (names are case-insensitive). Otherwise it
+tries the compiled backends in order — `miniaudio`, `sdl_mixer`, `stub` — and
+falls back if one fails to initialize.
+
+The `stub` backend is always available and silently succeeds at every operation,
+so auto-selection still yields a usable engine on platforms with no working
+audio backend. Explicit choices are strict: if the named backend is not
+compiled in or fails to initialize, engine creation fails rather than falling
+back. `engine.backend_name()` returns the actual backend name for that engine.
+
+Each engine owns its built-in backend instance, so multiple engines can be
+created at once without shared selection state. Custom backends implement
+`ryo::AudioEngineBackend` (and return `ryo::SoundBackend` objects) and are passed
+directly to the `AudioEngine(AudioEngineBackend*)` constructor. The engine does
+not own a custom backend, so it must outlive the engine.
+
+Sounds are created from an engine with a path and an optional load type. Volume
+and looping are set after creation:
+
+```cpp
+ryo::Sound beep(engine, "assets/beep.wav");
+beep.volume_set(0.5f);
+beep.looping_set(true);
+
+ryo::Sound music(engine, "assets/music.ogg", ryo::SOUND_LOAD_TYPE_STREAM);
+```
+
+The audio API is spread across `include/ryolib/audio/AudioBackend.h`,
+`AudioEngine.h` and `Sound.h`; including `<ryolib/audio.h>` pulls in all three.
+Backend implementations live under `src/audio/`, with one header/source pair
+per backend.
 
 ## Supported platforms
 

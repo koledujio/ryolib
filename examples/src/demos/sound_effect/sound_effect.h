@@ -66,10 +66,7 @@ public:
             return false;
         }
 
-        ryo::SoundDesc soundDesc = {};
-        soundDesc.path = "assets/mikudayo.mp3";
-
-        m_sound = new ryo::Sound(ctx.audioEngine, soundDesc);
+        m_sound = new ryo::Sound(ctx.audioEngine, "assets/mikudayo.mp3");
         if (!m_sound->valid()) {
             printf("Failed to load sound: %s\n", ryo::error_get());
             quit(ctx);

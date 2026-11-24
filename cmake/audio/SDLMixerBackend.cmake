@@ -1,6 +1,6 @@
 function(setup_sdl_mixer_backend TARGET_NAME)
     file(GLOB_RECURSE SDL_MIXER_SOURCES CONFIGURE_DEPENDS
-        "src/backend/audio/sdl_mixer/*.cpp"
+        "src/audio/sdl/*.cpp"
     )
 
     target_sources(${TARGET_NAME} PRIVATE ${SDL_MIXER_SOURCES})
@@ -43,6 +43,10 @@ function(setup_sdl_mixer_backend TARGET_NAME)
         set(SDLMIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
         set(SDLMIXER_MP3_MINIMP3 ON CACHE BOOL "" FORCE)
         set(SDLMIXER_MIDI OFF CACHE BOOL "" FORCE)
+        if(IOS)
+            # WavPack's vendored build uses GNU linker flags unavailable on iOS.
+            set(SDLMIXER_WAVPACK OFF CACHE BOOL "" FORCE)
+        endif()
 
         FetchContent_Declare(
             SDL3_mixer

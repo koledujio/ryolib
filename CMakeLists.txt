@@ -36,6 +36,35 @@ option(RYO_SAFETY
     ON
 )
 
+if(VITA)
+    set(_ryolib_miniaudio_default OFF)
+else()
+    set(_ryolib_miniaudio_default ON)
+endif()
+
+option(RYOLIB_AUDIO_BACKEND_MINIAUDIO
+    "Build the miniaudio audio backend"
+    ${_ryolib_miniaudio_default}
+)
+option(RYOLIB_AUDIO_BACKEND_SDL_MIXER
+    "Build the SDL3_mixer audio backend"
+    ON
+)
+
+function(_ryolib_setup_audio_backends)
+    if(RYOLIB_AUDIO_BACKEND_MINIAUDIO)
+        include(audio/MiniaudioBackend)
+        setup_miniaudio_backend(ryolib)
+        target_compile_definitions(ryolib PRIVATE RYOLIB_AUDIO_BACKEND_MINIAUDIO=1)
+    endif()
+
+    if(RYOLIB_AUDIO_BACKEND_SDL_MIXER)
+        include(audio/SDLMixerBackend)
+        setup_sdl_mixer_backend(ryolib)
+        target_compile_definitions(ryolib PRIVATE RYOLIB_AUDIO_BACKEND_SDL_MIXER=1)
+    endif()
+endfunction()
+
 set(RYOLIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/dist" CACHE STRING
     "Directory for final application outputs (executables, bundles, VPKs)"
 )
@@ -58,10 +87,17 @@ set(RYOLIB_SOURCES
     src/math/vector2.cpp
 
     src/debug/error/error.cpp
+
+    src/audio/AudioBackend.cpp
+    src/audio/AudioEngine.cpp
+    src/audio/Sound.cpp
 )
 
 add_library(ryolib STATIC ${RYOLIB_SOURCES})
 add_library(ryolib::ryolib ALIAS ryolib)
+
+include(audio/StubBackend)
+setup_stub_audio_backend(ryolib)
 
 # PIC is unnecessary for a static library, and the Vita ELF loader cannot
 # handle the R_ARM_BASE_PREL/GOT relocations that -fPIC generates.
@@ -105,9 +141,6 @@ if(APPLE)
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
-
-    include(audio/MiniaudioBackend)
-    setup_miniaudio_backend(ryolib)
 elseif(WIN32)
     target_compile_definitions(ryolib PUBLIC RYO_WIN32=1)
 
@@ -122,9 +155,6 @@ elseif(WIN32)
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
-
-    include(audio/MiniaudioBackend)
-    setup_miniaudio_backend(ryolib)
 elseif(VITA)
     target_compile_definitions(ryolib PUBLIC RYO_VITA=1)
 
@@ -146,9 +176,6 @@ elseif(VITA)
 
     include(image/StbImageBackend)
     setup_stb_image_backend(ryolib)
-
-    include(audio/SDLMixerBackend)
-    setup_sdl_mixer_backend(ryolib)
 else()
     message(FATAL_ERROR
         "[ryolib] Unsupported platform ${CMAKE_SYSTEM_NAME}.\n"
@@ -157,3 +184,5 @@ else()
         "[ryolib] Currently supported graphics backends are: Metal, D3D11, GXM."
     )
 endif()
+
+_ryolib_setup_audio_backends()

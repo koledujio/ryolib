@@ -66,18 +66,15 @@ public:
             return false;
         }
 
-        ryo::SoundDesc soundDesc = {};
-        soundDesc.path = "assets/float-play.flac";
-        soundDesc.loadType = ryo::SOUND_LOAD_TYPE_STREAM;
-        soundDesc.config.looping = true;
-
-        m_sound = new ryo::Sound(ctx.audioEngine, soundDesc);
+        m_sound = new ryo::Sound(ctx.audioEngine, "assets/float-play.flac",
+                                 ryo::SOUND_LOAD_TYPE_STREAM);
         if (!m_sound->valid()) {
             printf("Failed to load sound: %s\n", ryo::error_get());
             quit(ctx);
             return false;
         }
 
+        m_sound->looping_set(true);
         m_playing = false;
 
         return true;

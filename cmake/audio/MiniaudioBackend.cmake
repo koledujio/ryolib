@@ -1,12 +1,12 @@
 function(setup_miniaudio_backend TARGET_NAME)
     file(GLOB_RECURSE MINIAUDIO_SOURCES CONFIGURE_DEPENDS
-        "src/backend/audio/miniaudio/*.cpp"
+        "src/audio/miniaudio/*.cpp"
     )
 
     target_sources(${TARGET_NAME} PRIVATE ${MINIAUDIO_SOURCES})
 
     if(APPLE)
-        set_source_files_properties("src/backend/audio/miniaudio/vendor/miniaudio_impl.cpp"
+        set_source_files_properties("src/audio/miniaudio/vendor/miniaudio_impl.cpp"
             PROPERTIES COMPILE_OPTIONS "-xobjective-c++"
         )
         find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
